@@ -1,0 +1,19 @@
+# =============================================================================
+# SpaceY Rockets - Python Dependencies
+# =============================================================================
+#
+# Installation:
+#   pip install -r requirements.txt
+#
+# For production:
+#   pip install Flask gunicorn
+# =============================================================================
+
+# Core Flask framework
+Flask==3.0.0
+
+# Static site generator (optional, for deployment)
+Frozen-Flask==1.0.1
+
+# Production WSGI server (optional)
+# gunicorn==21.2.0

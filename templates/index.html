@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="SpaceY Rockets - Доставка подержанных ракет прямо в ваше воображение">
+    <title>SpaceY Rockets - by Elan Mask</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Local Styles -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <!-- =========================================================================
+         HEADER
+         ========================================================================= -->
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <h1 class="logo">SpaceY</h1>
+                <p class="tagline">by Elan Mask</p>
+            </div>
+        </div>
+    </header>
+
+    <!-- =========================================================================
+         HERO SECTION
+         ========================================================================= -->
+    <section class="hero">
+        <div class="container">
+            <h2 class="hero-title">Доставка подержанных ракет<br>прямо в ваше воображение</h2>
+            <p class="hero-subtitle">Выберите одну из {{ rockets_count }} моделей и получите её бесплатно!</p>
+            <a href="#rockets" class="btn btn-primary">Выбрать ракету</a>
+        </div>
+    </section>
+
+    <!-- =========================================================================
+         STEP 1: ВЫБОР РАКЕТЫ
+         ========================================================================= -->
+    <section id="rockets" class="section">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title">Шаг 1: Выберите ракету</h2>
+                <p class="section-subtitle">Все модели стоят $0.00. Серьезно. Совсем бесплатно.</p>
+            </div>
+            
+            <div class="rockets-grid">
+                {% for rocket in rockets %}
+                <div class="rocket-card" data-rocket-id="{{ rocket.id }}" data-rocket-name="{{ rocket.name }}">
+                    <div class="rocket-header">
+                        <h3 class="rocket-name">{{ rocket.name }}</h3>
+                        <span class="rocket-price">{{ rocket.price }}</span>
+                    </div>
+                    <p class="rocket-description">{{ rocket.description }}</p>
+                    <button class="btn btn-select" onclick="selectRocket({{ rocket.id }}, '{{ rocket.name }}')">
+                        Выбрать
+                    </button>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <!-- =========================================================================
+         STEP 2: ВЫБОР КОЛИЧЕСТВА И МЕСТА ДОСТАВКИ
+         ========================================================================= -->
+    <section id="delivery" class="section" style="display: none;">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title">Шаг 2: Куда доставить?</h2>
+                <p class="section-subtitle">Выбранная ракета: <span id="selectedRocketName" class="highlight"></span></p>
+            </div>
+            
+            <div class="delivery-form">
+                <div class="form-group">
+                    <label class="form-label">Количество ракет</label>
+                    <input type="number" id="quantity" class="form-input" value="1" min="1" max="100">
+                    <p class="form-hint">Рекомендуем начать с одной. Или двух. Или ста.</p>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Место доставки</label>
+                    <p class="form-hint">Кликните на карту, чтобы выбрать точку доставки</p>
+                    <div class="map-container">
+                        <canvas id="worldMap" class="world-map"></canvas>
+                        <div id="selectedCoords" class="selected-coords">Место не выбрано</div>
+                    </div>
+                </div>
+                
+                <button id="launchBtn" class="btn btn-primary btn-large" onclick="startDelivery()" disabled>
+                    🚀 Запустить доставку
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- =========================================================================
+         3D АНИМАЦИЯ
+         ========================================================================= -->
+    <div id="animationContainer" class="animation-container" style="display: none;">
+        <canvas id="globeCanvas"></canvas>
+        
+        <div class="animation-overlay">
+            <div class="tracking-info">
+                <div class="tracking-label">LIVE TRACKING</div>
+                <div id="trackingStatus" class="tracking-status">ROCKET DEPLOYED</div>
+            </div>
+            
+            <div class="mission-info">
+                <div class="mission-label">MISSION</div>
+                <div id="missionTarget" class="mission-target">TARGET ACQUIRED</div>
+            </div>
+        </div>
+        
+        <button class="skip-btn" onclick="skipAnimation()">Пропустить</button>
+    </div>
+
+    <!-- =========================================================================
+         МОДАЛЬНОЕ ОКНО УСПЕХА
+         ========================================================================= -->
+    <div id="successModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="success-icon">🎉</div>
+            <h2 class="modal-title">Заказ доставлен!</h2>
+            <p class="modal-text">
+                Ваша ракета доставлена прямо в ваше воображение!
+            </p>
+            <p class="modal-subtext">
+                Пожалуйста, оставьте оценку нашей космической доставке.<br>
+                Ваш отзыв очень важен нам, но абсолютно бесполезен.
+            </p>
+            <div class="rating">
+                <span class="star" data-rating="1">★</span>
+                <span class="star" data-rating="2">★</span>
+                <span class="star" data-rating="3">★</span>
+                <span class="star" data-rating="4">★</span>
+                <span class="star" data-rating="5">★</span>
+            </div>
+            <button class="btn btn-primary" onclick="closeSuccessModal()">Спасибо, но я уже забыл</button>
+        </div>
+    </div>
+
+    <!-- =========================================================================
+         FOOTER
+         ========================================================================= -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <p class="footer-logo">SpaceY</p>
+                <p class="footer-text">
+                    Это пародийный проект. Не связан с реальной космической компанией.<br>
+                    Никакие ракеты реально не продаются. Это просто шутка.
+                </p>
+                <p class="footer-copyright">© 2024 SpaceY Rockets by Elan Mask. Все права защищены (нет).</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- =========================================================================
+         SCRIPTS
+         ========================================================================= -->
+    
+    <!-- Three.js через CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <!-- Local Scripts -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/rocket-animation.js') }}"></script>
+</body>
+</html>
