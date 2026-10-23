@@ -1,0 +1,16 @@
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Editor / OS
+.vscode/
+.DS_Store
+
+# Backups
+*.bak
+*.bak.*
+
+# Build artifacts
+dist/
