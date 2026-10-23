@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="SpaceY — каталог космических аппаратов и интерактивная симуляция доставки.">
+    <title>SpaceY — орбитальные системы</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Local Styles -->
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <!-- =========================================================================
+         HEADER
+         ========================================================================= -->
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <h1 class="logo">SPACE<span>Y</span></h1>
+                <nav class="header-nav" aria-label="Основная навигация">
+                    <a href="#rockets">Аппараты</a>
+                    <a href="#news">Новости</a>
+                    <a href="#footer">О проекте</a>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <!-- =========================================================================
+         HERO SECTION
+         ========================================================================= -->
+    <section class="hero">
+        <div class="container hero-content">
+            <div class="hero-copy">
+                <p class="eyebrow"><span class="status-dot"></span> ОРБИТАЛЬНЫЕ СИСТЕМЫ / 2026</p>
+                <h2 class="hero-title">Дальше.<br>Точнее.<br><span>Вовремя.</span></h2>
+                <p class="hero-subtitle">Инженерные решения для орбитальных миссий. Изучите каталог, задайте координаты, проследите за полётом.</p>
+                <a href="#rockets" class="btn btn-primary">Открыть каталог <span aria-hidden="true">↘</span></a>
+                <div class="hero-meta"><span>01 / ВЫБОР АППАРАТА</span><span>02 / РАСЧЁТ МАРШРУТА</span><span>03 / СИМУЛЯЦИЯ</span></div>
+            </div>
+            <div class="hero-visual" aria-hidden="true">
+                <img src="/static/images/earth.jpg" alt="">
+                <span class="orbit orbit-one"></span>
+                <span class="orbit orbit-two"></span>
+                <span class="visual-coordinate">40°43' N<br>74°00' W</span>
+                <span class="visual-caption">ЗЕМЛЯ / ОРБИТАЛЬНАЯ КАРТА</span>
+            </div>
+        </div>
+    </section>
+
+    <section id="news" class="news-section">
+        <div class="container">
+            <div class="news-heading">
+                <div>
+                    <p class="eyebrow">ИЗ ЖУРНАЛА ПРОГРАММЫ / АРХИВ</p>
+                    <h2 class="section-title">Испытания и миссии</h2>
+                </div>
+                <p class="news-intro">Ключевые этапы разработки многоразовых систем и орбитальной инфраструктуры.</p>
+            </div>
+            <div class="news-grid">
+                <article class="news-card">
+                    <img src="/static/images/news-crs9.jpg" alt="Первая ступень ракеты после посадки на морскую платформу" loading="lazy">
+                    <div class="news-meta"><span>ВОЗВРАЩАЕМЫЕ СИСТЕМЫ</span><time datetime="2016-07">ИЮЛЬ 2016</time></div>
+                    <h3>CRS-9: проверка возврата ступени</h3>
+                    <p>После орбитальной миссии первая ступень вернулась на морскую платформу, подтвердив возможность повторного использования.</p>
+                    <a href="https://commons.wikimedia.org/wiki/File:CRS-9_mission_(28348649546).jpg" target="_blank" rel="noreferrer">Фото: CC0 / Wikimedia Commons ↗</a>
+                </article>
+                <article class="news-card">
+                    <img src="/static/images/news-iridium.jpg" alt="Ракета-носитель на стартовой площадке перед запуском спутников" loading="lazy">
+                    <div class="news-meta"><span>ОРБИТАЛЬНАЯ СВЯЗЬ</span><time datetime="2017-01">ЯНВАРЬ 2017</time></div>
+                    <h3>Iridium NEXT: новая группировка на орбите</h3>
+                    <p>Запуск первой партии спутников открыл масштабное обновление глобальной инфраструктуры мобильной связи.</p>
+                    <a href="https://commons.wikimedia.org/wiki/File:Iridium-1_Launch_(32312419215).jpg" target="_blank" rel="noreferrer">Фото: CC0 / Wikimedia Commons ↗</a>
+                </article>
+                <article class="news-card">
+                    <img src="/static/images/news-dragon.jpg" alt="Испытание двигателей космического корабля Dragon 2" loading="lazy">
+                    <div class="news-meta"><span>ПИЛОТИРУЕМЫЕ СИСТЕМЫ</span><time datetime="2015-11">НОЯБРЬ 2015</time></div>
+                    <h3>DragonFly: проверка системы посадки</h3>
+                    <p>Наземные огневые испытания подтвердили работу двигательной системы для управляемого спуска аппарата.</p>
+                    <a href="https://commons.wikimedia.org/wiki/File:Dragon_2_hover_test_(24159153709).jpg" target="_blank" rel="noreferrer">Фото: CC0 / Wikimedia Commons ↗</a>
+                </article>
+            </div>
+        </div>
+    </section>
+
+    <!-- =========================================================================
+         STEP 1: ВЫБОР РАКЕТЫ
+         ========================================================================= -->
+    <section id="rockets" class="section">
+        <div class="container">
+            <div class="section-header">
+                <p class="eyebrow">01 / КАТАЛОГ</p>
+                <h2 class="section-title">Выберите аппарат</h2>
+                <p class="section-subtitle">Доступно для симуляции: 40 конфигураций</p>
+            </div>
+            
+            <div class="rockets-grid">
+                
+                <div class="rocket-card" data-rocket-id="1" data-rocket-name="Fallcon 9">
+                    <div class="rocket-header">
+                        <h3 class="rocket-name">Fallcon 9</h3>
+                        <span class="rocket-index">01 / 40</span>
+                    </div>
+                    <p class="rocket-description">Ракетная система для вывода полезной нагрузки и выполнения транспортных миссий.</p>
+                    <button class="btn btn-select" onclick="selectRocket(1, 'Fallcon 9')">
+                        Выбрать аппарат <span aria-hidden="true">↗</span>
+                    </button>
+                </div>
+                
+                <div class="rocket-card" data-rocket-id="2" data-rocket-name="Fallcon-C">
+                    <div class="rocket-header">
+                        <h3 class="rocket-name">Fallcon-C</h3>
+                        <span class="rocket-index">02 / 40</span>
+                    </div>
+                    <p class="rocket-description">Ракетная система для вывода полезной нагрузки и выполнения транспортных миссий.</p>
+                    <button class="btn btn-select" onclick="selectRocket(2, 'Fallcon-C')">
+                        Выбрать аппарат <span aria-hidden="true">↗</span>
+                    </button>
+                </div>
+                
+                <div class="rocket-card" data-rocket-id="3" data-rocket-name="Fallcon-Heavy-Y">
+                    <div class="rocket-header">
+                        <h3 class="rocket-name">Fallcon-Heavy-Y</h3>
+                        <span class="rocket-index">03 / 40</span>
+                    </div>
+                    <p class="rocket-description">Ракетная система для вывода полезной нагрузки и выполнения транспортных миссий.</p>
+                    <button class="btn btn-select" onclick="selectRocket(3, 'Fallcon-Heavy-Y')">
+                        Выбрать аппарат <span aria-hidden="true">↗</span>
+                    </button>
+                </div>
+                
+                <div class="rocket-card" data-rocket-id="4" data-rocket-name="Fallcon-Pro">
+                    <div class="rocket-header">
+                        <h3 class="rocket-name">Fallcon-Pro</h3>
+                        <span class="rocket-index">04 / 40</span>
+                    </div>
+                    <p class="rocket-description">Ракетная система для вывода полезной нагрузки и выполнения транспортных миссий.</p>
+                    <button class="btn btn-select" onclick="selectRocket(4, 'Fallcon-Pro')">
+                        Выбрать аппарат <span aria-hidden="true">↗</span>
+                    </button>
+                </div>
+                
+                <div class="rocket-card" data-rocket-id="5" data-rocket-name="Fallcon-Lite">
+                    <div class="rocket-header">
+                        <h3 class="rocket-name">Fallcon-Lite</h3>
+                        <span class="rocket-index">05 / 40</span>
+                    </div>
+                    <p class="rocket-description">Ракетная система для вывода полезной нагрузки и выполнения транспортных миссий.</p>
+                    <button class="btn btn-select" onclick="selectRocket(5, 'Fallcon-Lite')">
+                        Выбрать аппарат <span aria-hidden="true">↗</span>
+                    </button>
+                </div>
+                
+                <div class="rocket-card" data-rocket-id="6" data-rocket-name="Fallcon-SE">
+                    <div class="rocket-header">
+                        <h3 class="rocket-name">Fallcon-SE</h3>
+                        <span class="rocket-index">06 / 40</span>
+                    </div>
+                    <p class="rocket-description">Ракетная система для вывода полезной нагрузки и выполнения транспортных миссий.</p>
+                    <button class="btn btn-select" onclick="selectRocket(6, 'Fallcon-SE')">
+                        Выбрать аппарат <span aria-hidden="true">↗</span>
+                    </button>
+                </div>
+                
+                <div class="rocket-card" data-rocket-id="7" data-rocket-name="Fallcon-X">
+                    <div class="rocket-header">
+                        <h3 class="rocket-name">Fallcon-X</h3>
+                        <span class="rocket-index">07 / 40</span>
+                    </div>
+                    <p class="rocket-description">Ракетная система для вывода полезной нагрузки и выполнения транспортных миссий.</p>
+                    <button class="btn btn-select" onclick="selectRocket(7, 'Fallcon-X')">
+                        Выбрать аппарат <span aria-hidden="true">↗</span>
+                    </button>
+                </div>
+                
+                <div class="rocket-card" data-rocket-id="8" data-rocket-name="Fallcon-Ultra">
+                    <div class="rocket-header">
+                        <h3 class="rocket-name">Fallcon-Ultra</h3>
+                        <span class="rocket-index">08 / 40</span>
+                    </div>
+                    <p class="rocket-description">Ракетная система для вывода полезной нагрузки и выполнения транспортных миссий.</p>
+                    <button class="btn btn-select" onclick="selectRocket(8, 'Fallcon-Ultra')">
+                        Выбрать аппарат <span aria-hidden="true">↗</span>
+                    </button>
+                </div>
+                
+                <div class="rocket-card" data-rocket-id="9" data-rocket-name="Storship-V">
+                    <div class="rocket-header">
+                        <h3 class="rocket-name">Storship-V</h3>
+                        <span class="rocket-index">09 / 40</span>
+                    </div>
+                    <p class="rocket-description">Ракетная система для вывода полезной нагрузки и выполнения транспортных миссий.</p>
+                    <button class="btn btn-select" onclick="selectRocket(9, 'Storship-V')">
+                        Выбрать аппарат <span aria-hidden="true">↗</span>
+                    </button>
+                </div>
+                
+                <div class="rocket-card" data-rocket-id="10" data-rocket-name="Storship-SuperMax">
+                    <div class="rocket-header">
+                        <h3 class="rocket-name">Storship-SuperMax</h3>
+                        <span class="rocket-index">10 / 40</span>
+                    </div>
+                    <p class="rocket-description">Ракетная система для вывода полезной нагрузки и выполнения транспортных миссий.</p>
+                    <button class="btn btn-select" onclick="selectRocket(10, 'Storship-SuperMax')">
+                        Выбрать аппарат <span aria-hidden="true">↗</span>
+                    </button>
+                </div>
+                
+                <div class="rocket-card" data-rocket-id="11" data-rocket-name="Storship-Mini">
+                    <div class="rocket-header">
+                        <h3 class="rocket-name">Storship-Mini</h3>
+                        <span class="rocket-index">11 / 40</span>
+                    </div>
+                    <p class="rocket-description">Ракетная система для вывода полезной нагрузки и выполнения транспортных миссий.</p>
+                    <button class="btn btn-select" onclick="selectRocket(11, 'Storship-Mini')">
+                        Выбрать аппарат <span aria-hidden="true">↗</span>
+                    </button>
+                </div>
+                
+                <div class="rocket-card" data-rocket-id="12" data-rocket-name="Storship-Ultra">
+                    <div class="rocket-header">
+                        <h3 class="rocket-name">Storship-Ultra</h3>
+                        <span class="rocket-index">12 / 40</span>
+                    </div>
+                    <p class="rocket-description">Ракетная система для вывода полезной нагрузки и выполнения транспортных миссий.</p>
+                    <button class="btn btn-select" onclick="selectRocket(12, 'Storship-Ultra')">
+                        Выбрать аппарат <span aria-hidden="true">↗</span>
+                    </button>
+                </div>
+                
+                <div class="rocket-card" data-rocket-id="13" data-rocket-name="Storship-Mega">
+                    <div class="rocket-header">
+                        <h3 class="rocket-name">Storship-Mega</h3>
+                        <span class="rocket-index">13 / 40</span>
+                    </div>
+                    <p class="rocket-description">Ракетная система для вывода полезной нагрузки и выполнения транспортных миссий.</p>
+                    <button class="btn btn-select" onclick="selectRocket(13, 'Storship-Mega')">
+                        Выбрать аппарат <span aria-hidden="true">↗</span>
+                    </button>
+                </div>
+                
+                <div class="rocket-card" data-rocket-id="14" data-rocket-name="Storship-Tiny">
+                    <div class="rocket-header">
+                        <h3 class="rocket-name">Storship-Tiny</h3>
+                        <span class="rocket-index">14 / 40</span>
+                    </div>
+                    <p class="rocket-description">Ракетная система для вывода полезной нагрузки и выполнения транспортных миссий.</p>
+                    <button class="btn btn-select" onclick="selectRocket(14, 'Storship-Tiny')">
+                        Выбрать аппарат <span aria-hidden="true">↗</span>
+                    </button>
+                </div>
+                
+                <div class="rocket-card" data-rocket-id="15" data-rocket-name="Storship-Pro">
+                    <div class="rocket-header">
+                        <h3 class="rocket-name">Storship-Pro</h3>
+                        <span class="rocket-index">15 / 40</span>
+                    </div>
+                    <p class="rocket-description">Ракетная система для вывода полезной нагрузки и выполнения транспортных миссий.</p>
+                    <button class="btn btn-select" onclick="selectRocket(15, 'Storship-Pro')">
+                        Выбрать аппарат <span aria-hidden="true">↗</span>
+                    </button>
+                </div>
+                
+                <div class="rocket-card" data-rocket-id="16" data-rocket-name="Storship-Elite">
+                    <div class="rocket-header">
+                        <h3 class="rocket-name">Storship-Elite</h3>
+                        <span class="rocket-index">16 / 40</span>
+                    </div>
+                    <p class="rocket-description">Ракетная система для вывода полезной нагрузки и выполнения транспортных миссий.</p>
+                    <button class="btn btn-select" onclick="selectRocket(16, 'Storship-Elite')">
+                        Выбрать аппарат <span aria-hidden="true">↗</span>
+                    </button>
+                </div>
+                
+                <div class="rocket-card" data-rocket-id="17" data-rocket-name="Dragoon">
+                    <div class="rocket-header">
+                        <h3 class="rocket-name">Dragoon</h3>
+                        <span class="rocket-index">17 / 40</span>
+                    </div>
+                    <p class="rocket-description">Ракетная система для вывода полезной нагрузки и выполнения транспортных миссий.</p>
+                    <button class="btn btn-select" onclick="selectRocket(17, 'Dragoon')">
+                        Выбрать аппарат <span aria-hidden="true">↗</span>
+                    </button>
+                </div>
+                
+                <div class="rocket-card" data-rocket-id="18" data-rocket-name="Dragoon-XL">
+                    <div class="rocket-header">
+                        <h3 class="rocket-name">Dragoon-XL</h3>
+                        <span class="rocket-index">18 / 40</span>
+                    </div>
+                    <p class="rocket-description">Ракетная система для вывода полезной нагрузки и выполнения транспортных миссий.</p>
+                    <button class="btn btn-select" onclick="selectRocket(18, 'Dragoon-XL')">
+                        Выбрать аппарат <span aria-hidden="true">↗</span>
+                    </button>
+                </div>
+                
+                <div class="rocket-card" data-rocket-id="19" data-rocket-name="Dragoon-Mini">
+                    <div class="rocket-header">
+                        <h3 class="rocket-name">Dragoon-Mini</h3>
+                        <span class="rocket-index">19 / 40</span>
+                    </div>
+                    <p class="rocket-description">Ракетная система для вывода полезной нагрузки и выполнения транспортных миссий.</p>
+                    <button class="btn btn-select" onclick="selectRocket(19, 'Dragoon-Mini')">
+                        Выбрать аппарат <span aria-hidden="true">↗</span>
+                    </button>
+                </div>
+                
+                <div class="rocket-card" data-rocket-id="20" data-rocket-name="Dragoon-Cargo">
+                    <div class="rocket-header">
+                        <h3 class="rocket-name">Dragoon-Cargo</h3>
+                        <span class="rocket-index">20 / 40</span>
+                    </div>
+                    <p class="rocket-description">Ракетная система для вывода полезной нагрузки и выполнения транспортных миссий.</p>
+                    <button class="btn btn-select" onclick="selectRocket(20, 'Dragoon-Cargo')">
+                        Выбрать аппарат <span aria-hidden="true">↗</span>
+                    </button>
+                </div>
+                
+                <div class="rocket-card" data-rocket-id="21" data-rocket-name="Starlink-Pro">
+                    <div class="rocket-header">
+                        <h3 class="rocket-name">Starlink-Pro</h3>
+                        <span class="rocket-index">21 / 40</span>
+                    </div>
+                    <p class="rocket-description">Орбитальная платформа для телекоммуникационных и навигационных задач.</p>
+                    <button class="btn btn-select" onclick="selectRocket(21, 'Starlink-Pro')">
+                        Выбрать аппарат <span aria-hidden="true">↗</span>
+                    </button>
+                </div>
+                
+                <div class="rocket-card" data-rocket-id="22" data-rocket-name="Starlink-Basic">
+                    <div class="rocket-header">
+                        <h3 class="rocket-name">Starlink-Basic</h3>
+                        <span class="rocket-index">22 / 40</span>
+                    </div>
+                    <p class="rocket-description">Орбитальная платформа для телекоммуникационных и навигационных задач.</p>
+                    <button class="btn btn-select" onclick="selectRocket(22, 'Starlink-Basic')">
+                        Выбрать аппарат <span aria-hidden="true">↗</span>
+                    </button>
+                </div>
+                
+                <div class="rocket-card" data-rocket-id="23" data-rocket-name="Starlink-Premium">
+                    <div class="rocket-header">
+                        <h3 class="rocket-name">Starlink-Premium</h3>
+                        <span class="rocket-index">23 / 40</span>
+                    </div>
+                    <p class="rocket-description">Орбитальная платформа для телекоммуникационных и навигационных задач.</p>
+                    <button class="btn btn-select" onclick="selectRocket(23, 'Starlink-Premium')">
+                        Выбрать аппарат <span aria-hidden="true">↗</span>
+                    </button>
+                </div>
+                
+                <div class="rocket-card" data-rocket-id="24" data-rocket-name="RedDragon">
+                    <div class="rocket-header">
+                        <h3 class="rocket-name">RedDragon</h3>
+                        <span class="rocket-index">24 / 40</span>
+                    </div>
+                    <p class="rocket-description">Космическая платформа для исследовательских и орбитальных миссий.</p>
+                    <button class="btn btn-select" onclick="selectRocket(24, 'RedDragon')">
+                        Выбрать аппарат <span aria-hidden="true">↗</span>
+                    </button>
+                </div>
+                
+                <div class="rocket-card" data-rocket-id="25" data-rocket-name="BlueOrigin-X">
+                    <div class="rocket-header">
+                        <h3 class="rocket-name">BlueOrigin-X</h3>
+                        <span class="rocket-index">25 / 40</span>
+                    </div>
+                    <p class="rocket-description">Космическая платформа для исследовательских и орбитальных миссий.</p>
+                    <button class="btn btn-select" onclick="selectRocket(25, 'BlueOrigin-X')">
+                        Выбрать аппарат <span aria-hidden="true">↗</span>
+                    </button>
+                </div>
+                
+                <div class="rocket-card" data-rocket-id="26" data-rocket-name="CosmicCrusher">
+                    <div class="rocket-header">
+                        <h3 class="rocket-name">CosmicCrusher</h3>
+                        <span class="rocket-index">26 / 40</span>
+                    </div>
+                    <p class="rocket-description">Космическая платформа для исследовательских и орбитальных миссий.</p>
+                    <button class="btn btn-select" onclick="selectRocket(26, 'CosmicCrusher')">
+                        Выбрать аппарат <span aria-hidden="true">↗</span>
+                    </button>
+                </div>
+                
+                <div class="rocket-card" data-rocket-id="27" data-rocket-name="GalaxyGlider">
+                    <div class="rocket-header">
+                        <h3 class="rocket-name">GalaxyGlider</h3>
+                        <span class="rocket-index">27 / 40</span>
+                    </div>
+                    <p class="rocket-description">Космическая платформа для исследовательских и орбитальных миссий.</p>
+                    <button class="btn btn-select" onclick="selectRocket(27, 'GalaxyGlider')">
+                        Выбрать аппарат <span aria-hidden="true">↗</span>
+                    </button>
+                </div>
+                
+                <div class="rocket-card" data-rocket-id="28" data-rocket-name="OrbitObliterator">
+                    <div class="rocket-header">
+                        <h3 class="rocket-name">OrbitObliterator</h3>
+                        <span class="rocket-index">28 / 40</span>
+                    </div>
+                    <p class="rocket-description">Космическая платформа для исследовательских и орбитальных миссий.</p>
+                    <button class="btn btn-select" onclick="selectRocket(28, 'OrbitObliterator')">
+                        Выбрать аппарат <span aria-hidden="true">↗</span>
+                    </button>
+                </div>
+                
+                <div class="rocket-card" data-rocket-id="29" data-rocket-name="NebulaNavigator">
+                    <div class="rocket-header">
+                        <h3 class="rocket-name">NebulaNavigator</h3>
+                        <span class="rocket-index">29 / 40</span>
+                    </div>
+                    <p class="rocket-description">Космическая платформа для исследовательских и орбитальных миссий.</p>
+                    <button class="btn btn-select" onclick="selectRocket(29, 'NebulaNavigator')">
+                        Выбрать аппарат <span aria-hidden="true">↗</span>
+                    </button>
+                </div>
+                
+                <div class="rocket-card" data-rocket-id="30" data-rocket-name="AstroAssault">
+                    <div class="rocket-header">
+                        <h3 class="rocket-name">AstroAssault</h3>
+                        <span class="rocket-index">30 / 40</span>
+                    </div>
+                    <p class="rocket-description">Космическая платформа для исследовательских и орбитальных миссий.</p>
+                    <button class="btn btn-select" onclick="selectRocket(30, 'AstroAssault')">
+                        Выбрать аппарат <span aria-hidden="true">↗</span>
+                    </button>
+                </div>
+                
+                <div class="rocket-card" data-rocket-id="31" data-rocket-name="MeteorMover">
+                    <div class="rocket-header">
+                        <h3 class="rocket-name">MeteorMover</h3>
+                        <span class="rocket-index">31 / 40</span>
+                    </div>
+                    <p class="rocket-description">Космическая платформа для исследовательских и орбитальных миссий.</p>
+                    <button class="btn btn-select" onclick="selectRocket(31, 'MeteorMover')">
+                        Выбрать аппарат <span aria-hidden="true">↗</span>
+                    </button>
+                </div>
+                
+                <div class="rocket-card" data-rocket-id="32" data-rocket-name="CometCruiser">
+                    <div class="rocket-header">
+                        <h3 class="rocket-name">CometCruiser</h3>
+                        <span class="rocket-index">32 / 40</span>
+                    </div>
+                    <p class="rocket-description">Космическая платформа для исследовательских и орбитальных миссий.</p>
+                    <button class="btn btn-select" onclick="selectRocket(32, 'CometCruiser')">
+                        Выбрать аппарат <span aria-hidden="true">↗</span>
+                    </button>
+                </div>
+                
+                <div class="rocket-card" data-rocket-id="33" data-rocket-name="PlanetPuncher">
+                    <div class="rocket-header">
+                        <h3 class="rocket-name">PlanetPuncher</h3>
+                        <span class="rocket-index">33 / 40</span>
+                    </div>
+                    <p class="rocket-description">Космическая платформа для исследовательских и орбитальных миссий.</p>
+                    <button class="btn btn-select" onclick="selectRocket(33, 'PlanetPuncher')">
+                        Выбрать аппарат <span aria-hidden="true">↗</span>
+                    </button>
+                </div>
+                
+                <div class="rocket-card" data-rocket-id="34" data-rocket-name="StellarShuttle">
+                    <div class="rocket-header">
+                        <h3 class="rocket-name">StellarShuttle</h3>
+                        <span class="rocket-index">34 / 40</span>
+                    </div>
+                    <p class="rocket-description">Космическая платформа для исследовательских и орбитальных миссий.</p>
+                    <button class="btn btn-select" onclick="selectRocket(34, 'StellarShuttle')">
+                        Выбрать аппарат <span aria-hidden="true">↗</span>
+                    </button>
+                </div>
+                
+                <div class="rocket-card" data-rocket-id="35" data-rocket-name="LunarLander">
+                    <div class="rocket-header">
+                        <h3 class="rocket-name">LunarLander</h3>
+                        <span class="rocket-index">35 / 40</span>
+                    </div>
+                    <p class="rocket-description">Посадочный модуль для точного сближения с поверхностью небесного тела.</p>
+                    <button class="btn btn-select" onclick="selectRocket(35, 'LunarLander')">
+                        Выбрать аппарат <span aria-hidden="true">↗</span>
+                    </button>
+                </div>
+                
+                <div class="rocket-card" data-rocket-id="36" data-rocket-name="SolarSprinter">
+                    <div class="rocket-header">
+                        <h3 class="rocket-name">SolarSprinter</h3>
+                        <span class="rocket-index">36 / 40</span>
+                    </div>
+                    <p class="rocket-description">Космическая платформа для исследовательских и орбитальных миссий.</p>
+                    <button class="btn btn-select" onclick="selectRocket(36, 'SolarSprinter')">
+                        Выбрать аппарат <span aria-hidden="true">↗</span>
+                    </button>
+                </div>
+                
+                <div class="rocket-card" data-rocket-id="37" data-rocket-name="VoidVoyager">
+                    <div class="rocket-header">
+                        <h3 class="rocket-name">VoidVoyager</h3>
+                        <span class="rocket-index">37 / 40</span>
+                    </div>
+                    <p class="rocket-description">Космическая платформа для исследовательских и орбитальных миссий.</p>
+                    <button class="btn btn-select" onclick="selectRocket(37, 'VoidVoyager')">
+                        Выбрать аппарат <span aria-hidden="true">↗</span>
+                    </button>
+                </div>
+                
+                <div class="rocket-card" data-rocket-id="38" data-rocket-name="QuasarQuest">
+                    <div class="rocket-header">
+                        <h3 class="rocket-name">QuasarQuest</h3>
+                        <span class="rocket-index">38 / 40</span>
+                    </div>
+                    <p class="rocket-description">Космическая платформа для исследовательских и орбитальных миссий.</p>
+                    <button class="btn btn-select" onclick="selectRocket(38, 'QuasarQuest')">
+                        Выбрать аппарат <span aria-hidden="true">↗</span>
+                    </button>
+                </div>
+                
+                <div class="rocket-card" data-rocket-id="39" data-rocket-name="PulsarPioneer">
+                    <div class="rocket-header">
+                        <h3 class="rocket-name">PulsarPioneer</h3>
+                        <span class="rocket-index">39 / 40</span>
+                    </div>
+                    <p class="rocket-description">Космическая платформа для исследовательских и орбитальных миссий.</p>
+                    <button class="btn btn-select" onclick="selectRocket(39, 'PulsarPioneer')">
+                        Выбрать аппарат <span aria-hidden="true">↗</span>
+                    </button>
+                </div>
+                
+                <div class="rocket-card" data-rocket-id="40" data-rocket-name="BlackHoleBouncer">
+                    <div class="rocket-header">
+                        <h3 class="rocket-name">BlackHoleBouncer</h3>
+                        <span class="rocket-index">40 / 40</span>
+                    </div>
+                    <p class="rocket-description">Космическая платформа для исследовательских и орбитальных миссий.</p>
+                    <button class="btn btn-select" onclick="selectRocket(40, 'BlackHoleBouncer')">
+                        Выбрать аппарат <span aria-hidden="true">↗</span>
+                    </button>
+                </div>
+                
+            </div>
+        </div>
+    </section>
+
+    <!-- =========================================================================
+         STEP 2: ВЫБОР КОЛИЧЕСТВА И МЕСТА ДОСТАВКИ
+         ========================================================================= -->
+    <section id="delivery" class="section" style="display: none;">
+        <div class="container">
+            <div class="section-header">
+                <p class="eyebrow">02 / ПАРАМЕТРЫ МИССИИ</p>
+                <h2 class="section-title">Задайте координаты</h2>
+                <p class="section-subtitle">Выбранный аппарат: <span id="selectedRocketName" class="highlight"></span></p>
+            </div>
+            
+            <div class="delivery-form">
+                <div class="form-group">
+                    <label class="form-label">Количество ракет</label>
+                    <input type="number" id="quantity" class="form-input" value="1" min="1" max="100">
+                    <p class="form-hint">Допустимое количество: от 1 до 100 единиц.</p>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Место доставки</label>
+                    <p class="form-hint">Укажите точку назначения на карте.</p>
+                    <div class="map-container">
+                        <canvas id="worldMap" class="world-map"></canvas>
+                        <div id="selectedCoords" class="selected-coords">Место не выбрано</div>
+                    </div>
+                </div>
+                
+                <button id="launchBtn" class="btn btn-primary btn-large" onclick="startDelivery()" disabled>
+                    Начать симуляцию <span aria-hidden="true">↗</span>
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- =========================================================================
+         3D АНИМАЦИЯ
+         ========================================================================= -->
+    <div id="animationContainer" class="animation-container" style="display: none;" role="dialog" aria-modal="true" aria-label="Симуляция полёта">
+        <canvas id="globeCanvas"></canvas>
+        
+        <div class="animation-overlay">
+            <div class="tracking-info">
+                <div class="tracking-label"><span class="status-dot"></span> ЦЕНТР УПРАВЛЕНИЯ / LIVE</div>
+                <div id="trackingStatus" class="tracking-status">ПОИСК ЦЕЛИ</div>
+                <div class="mission-progress"><span id="missionProgress"></span></div>
+            </div>
+            
+            <div class="mission-info">
+                <div class="mission-label">ТОЧКА НАЗНАЧЕНИЯ</div>
+                <div id="missionTarget" class="mission-target">КООРДИНАТЫ НЕ ЗАДАНЫ</div>
+            </div>
+            <div id="cameraMode" class="camera-mode">КАМЕРА / ОРБИТАЛЬНОЕ НАБЛЮДЕНИЕ</div>
+            <div id="targetReticle" class="target-reticle" aria-hidden="true"><span></span><small>ЦЕЛЬ ОБНАРУЖЕНА</small></div>
+        </div>
+        <div id="flightFog" class="flight-fog"></div>
+        <div id="flightNotice" class="flight-notice" role="status" aria-live="polite">
+            <p class="eyebrow">ОБНОВЛЕНИЕ МИССИИ</p>
+            <h2>Ракета в пути</h2>
+            <p>Доставка продолжается. Не забудьте оставить отзыв позже.</p>
+        </div>
+        <div class="animation-mark">SPACEY <span>MISSION CONTROL</span></div>
+    </div>
+
+    <!-- =========================================================================
+         МОДАЛЬНОЕ ОКНО УСПЕХА
+         ========================================================================= -->
+    <div id="successModal" class="modal" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+        <div class="modal-content">
+            <p class="eyebrow">ОТЧЁТ О МИССИИ / 001</p>
+            <h2 id="modalTitle" class="modal-title">Симуляция завершена</h2>
+            <p class="modal-text">Маршрут пройден. Доставка подтверждена.</p>
+            <p id="missionReport" class="mission-report"></p>
+            <p class="modal-subtext">Осталось представить, что аппарат уже припаркован у вас.</p>
+            <div class="rating">
+                <span class="star" data-rating="1">★</span>
+                <span class="star" data-rating="2">★</span>
+                <span class="star" data-rating="3">★</span>
+                <span class="star" data-rating="4">★</span>
+                <span class="star" data-rating="5">★</span>
+            </div>
+            <button class="btn btn-primary" onclick="closeSuccessModal()">Завершить миссию <span aria-hidden="true">↗</span></button>
+        </div>
+    </div>
+
+    <!-- =========================================================================
+         FOOTER
+         ========================================================================= -->
+    <footer id="footer" class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <p class="footer-logo">SPACEY</p>
+                <p class="footer-text">
+                    SpaceY — вымышленный проект для демонстрации интерактивной космической доставки.<br>
+                    Ни один аппарат не покинул Землю. Даже мысленно.
+                </p>
+                <p class="footer-copyright">© 2025 SpaceY / Все миссии существуют только в рамках симуляции.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- =========================================================================
+         SCRIPTS
+         ========================================================================= -->
+    
+    <!-- Three.js через CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <!-- Local Scripts -->
+    <script src="/static/js/main.js"></script>
+    <script src="/static/js/rocket-animation.js"></script>
+</body>
+</html>

@@ -1,0 +1,3 @@
+# Из корня проекта загрузите текстуры планеты и облаков:
+wget -O static/images/earth.jpg https://jrmagnetics.com/VR/three.js-master/examples/textures/planets/earth_atmos_2048.jpg
+wget -O static/images/earth_clouds_1024.png https://jrmagnetics.com/VR/three.js-master/examples/textures/planets/earth_clouds_1024.png
