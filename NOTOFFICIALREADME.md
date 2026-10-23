@@ -1,10 +1,10 @@
-# 🚀 SpaceY Rockets
+# 🚀 SpaceY Rocketshttps://img.shields.io/badge/Flask-3.0-black?style=for-the-badge&logo=flask
 
 **Шуточный веб-сайт для "покупки" космических ракет**
 
 Пародийный сайт от **Elan Mask** (не путать с реальными людьми!). Выберите одну из 40 моделей ракет и получите её бесплатно. Доставка прямо в ваше воображение!
 
-![SpaceY Rockets](https://img.shields.io/badge/Flask-3.0-black?style=for-the-badge&logo=flask)
+![SpaceY Rockets]()
 ![Python](https://img.shields.io/badge/Python-3.8+-blue?style=for-the-badge&logo=python)
 ![Three.js](https://img.shields.io/badge/Three.js-r128-green?style=for-the-badge)
 ![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)

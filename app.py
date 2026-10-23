@@ -155,14 +155,14 @@ if __name__ == '__main__':
     """
     Точка входа в приложение.
     
-    Запускает Flask development server на порту 5000.
+    Запускает Flask development server на порту 8000.
     """
     print("\n" + "="*60)
     print("🚀 SpaceY Rockets - Limited Edition")
     print("   by Elan Mask")
     print("="*60)
     print("\n📡 Server starting...")
-    print("🌐 Open in browser: http://localhost:5000")
+    print("🌐 Open in browser: http://localhost:8000")
     print("\n📦 To generate static site:")
     print("   python freeze.py")
     print("="*60 + "\n")
@@ -171,5 +171,5 @@ if __name__ == '__main__':
     app.run(
         debug=True,
         host='0.0.0.0',
-        port=5000
+        port=8000
     )

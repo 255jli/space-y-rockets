@@ -1,7 +1,0 @@
-# Скачайте текстуру Земли и сохраните как earth.jpg
-# 
-# Команда для скачивания:
-# wget -O earth.jpg "https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/earth_atmos_2048.jpg"
-# 
-# Или скачайте вручную с:
-# https://visibleearth.nasa.gov/images/57752/blue-marble-land-surface-shallow-water-and-shaded-topography
