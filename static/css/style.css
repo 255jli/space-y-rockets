@@ -1058,28 +1058,25 @@ textarea {
 }
 
 /* ---------------------------------------------------------------------------
-   Logo "SpaceY": ONE solid inline-SVG element built from word_Y.svg.
-   The Y glyph keeps its exact original path/geometry; "Space" was generated
-   with the very same style attributes as word_Y.svg:
-     font-size: 21.3333px; font-family: Arial; fill:#ffffff;
-     stroke:#000000; stroke-width:4.84016; paint-order: stroke fill markers
-   => identical edge-contour thickness for both words, regular inter-word
-   space (advance of "Space" = 76.85u + 4.85u gap = Y at x=81.7).
+   Logo "SpaceY": bold "Space" text with a black contour matching the
+   pre-outlined word_Y.svg image that follows it.
 --------------------------------------------------------------------------- */
-.logo-spacey {
-    display: block;
-    height: clamp(19px, 1.7vw, 25px);
-    width: auto;
-    overflow: visible;
+.logo-word {
+    color: #fff;
+    font-weight: 900;
+    -webkit-text-stroke: 2.5px #000;
+    paint-order: stroke fill;
+    text-shadow:
+        -2px 0 0 #000, 2px 0 0 #000,
+        0 -2px 0 #000, 0 2px 0 #000,
+        -1.4px -1.4px 0 #000, 1.4px -1.4px 0 #000,
+        -1.4px 1.4px 0 #000, 1.4px 1.4px 0 #000;
 }
 
-.logo-spacey-g {
-    font-size: 21.3333px;
-    font-family: Arial, Helvetica, sans-serif;
-    fill: #ffffff;
-    stroke: #000000;
-    stroke-width: 4.84016;
-    paint-order: stroke fill markers;
+.logo-y {
+    display: block;
+    height: 0.82em;
+    width: auto;
 }
 
 .language-menu {
