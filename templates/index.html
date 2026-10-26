@@ -9,7 +9,7 @@
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700&display=swap" rel="stylesheet">
     
     <!-- Local Styles -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
@@ -21,22 +21,19 @@
     <header class="header">
         <div class="container">
             <div class="header-content">
-                <a class="logo" href="#" aria-label="SpaceY home">
-                    <svg class="logo-mark" viewBox="0 0 36 36" role="img" aria-label="SpaceY">
-                        <path d="M18 2.5 21 14l11 6-11 2-5 11-2-11-10-5 11-2z" fill="currentColor"/>
-                        <circle cx="26.5" cy="8.5" r="2" fill="currentColor"/>
-                    </svg>
-                    <span>SPACE<span class="logo-accent">Y</span></span>
-                </a>
-                <nav class="header-nav" aria-label="Main navigation">
-                    <a href="#rockets" data-i18n="navRockets">Vehicles</a>
-                    <a href="#news" data-i18n="navNews">Missions</a>
-                    <a href="#footer" data-i18n="navAbout">About</a>
-                </nav>
-                <div class="language-switch" aria-label="Language">
-                    <button type="button" data-language="en" aria-pressed="true">EN</button>
-                    <button type="button" data-language="ru" aria-pressed="false">RU</button>
-                    <button type="button" data-language="zh" aria-pressed="false">中文</button>
+                <div class="logo" aria-label="SpaceY">
+                    <span class="logo-word">Space</span>
+                    <img class="logo-y" src="{{ url_for('static', filename='css/word_Y.svg') }}" alt="">
+                </div>
+                <div class="language-menu">
+                    <button class="language-menu-trigger" type="button" aria-haspopup="true" aria-expanded="false">
+                        Язык
+                    </button>
+                    <div class="language-menu-options" aria-label="Выберите язык">
+                        <button type="button" data-language="en" aria-pressed="true">Английский язык</button>
+                        <button type="button" data-language="ru" aria-pressed="false">Русский язык</button>
+                        <button type="button" data-language="zh" aria-pressed="false">Китайский язык</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -45,150 +42,43 @@
     <!-- =========================================================================
          HERO SECTION
          ========================================================================= -->
-    <section class="hero">
+    <section id="home" class="hero hero-launch">
+        <video class="hero-video" autoplay muted loop playsinline preload="metadata" aria-hidden="true">
+            <source src="{{ url_for('static', filename='media/launch/crs34_launch_video.mp4') }}" type="video/mp4">
+        </video>
         <div class="container hero-content">
             <div class="hero-copy">
-                <p class="eyebrow"><span class="status-dot"></span><span data-i18n="heroEyebrow">ORBITAL SYSTEMS / 2026</span></p>
-                <h2 class="hero-title" data-i18n-html="heroTitle">Beyond.<br>Precisely.<br><span>On time.</span></h2>
-                <p class="hero-subtitle" data-i18n="heroSubtitle">Explore the fleet, set your destination, and follow the flight.</p>
-                <a href="#rockets" class="btn btn-primary"><span data-i18n="browseFleet">Explore the fleet</span> <span aria-hidden="true">↘</span></a>
-                <div class="hero-meta"><span data-i18n="heroStep1">01 / SELECT VEHICLE</span><span data-i18n="heroStep2">02 / SET DESTINATION</span><span data-i18n="heroStep3">03 / FLIGHT SIMULATION</span></div>
-            </div>
-            <div class="hero-visual" aria-hidden="true">
-                <img src="{{ url_for('static', filename='images/earth/earth_atmos_2048-summer.jpg') }}" alt="">
-                <span class="orbit orbit-one"></span>
-                <span class="orbit orbit-two"></span>
-                <span class="visual-coordinate">40°43' N<br>74°00' W</span>
-                <span class="visual-caption" data-i18n="earthCaption">EARTH / ORBITAL VIEW</span>
+                <p class="hero-eyebrow">STARSHEEP</p>
+                <h1 class="hero-title">Starsheep Flight 24</h1>
+                <button class="btn btn-primary hero-watch" type="button" data-scroll-to-order data-i18n="browseFleet">Explore the fleet</button>
             </div>
         </div>
     </section>
 
-    <section id="news" class="news-section">
-        <div class="container">
-            <div class="news-heading">
-                <div>
-                    <p class="eyebrow" data-i18n="newsEyebrow">FROM THE MISSION ARCHIVE</p>
-                    <h2 class="section-title" data-i18n="newsTitle">Missions & milestones</h2>
-                </div>
-                <p class="news-intro" data-i18n="newsIntro">Milestones in reusable launch systems and orbital infrastructure.</p>
-            </div>
-            <div class="news-grid">
-                <article class="news-card">
-                    <img src="{{ url_for('static', filename='images/news-crs9.jpg') }}" alt="SpaceX CRS-9 launch" data-i18n-alt="altCrs9" loading="lazy">
-                    <div class="news-meta"><span data-i18n="newsCategory1">REUSABLE SYSTEMS</span><time datetime="2016-07" data-i18n="july2016">JULY 2016</time></div>
-                    <h3 data-i18n="newsTitle1">CRS-9: proving booster recovery</h3>
-                    <p data-i18n="newsText1">After its orbital mission, the first stage returned to a drone ship, demonstrating the promise of reuse.</p>
-                    <a href="https://commons.wikimedia.org/wiki/File:CRS-9_mission_(28348649546).jpg" target="_blank" rel="noreferrer" data-i18n="photoCredit">Photo: CC0 / Wikimedia Commons ↗</a>
-                </article>
-                <article class="news-card">
-                    <img src="{{ url_for('static', filename='images/news-iridium.jpg') }}" alt="Night launch of the Iridium satellite constellation" data-i18n-alt="altIridium" loading="lazy">
-                    <div class="news-meta"><span data-i18n="newsCategory2">ORBITAL CONNECTIVITY</span><time datetime="2017-01" data-i18n="jan2017">JANUARY 2017</time></div>
-                    <h3 data-i18n="newsTitle2">Iridium NEXT: a new constellation</h3>
-                    <p data-i18n="newsText2">The first deployment began a major upgrade to the global mobile communications network.</p>
-                    <a href="https://commons.wikimedia.org/wiki/File:Iridium-1_Launch_(32312419215).jpg" target="_blank" rel="noreferrer" data-i18n="photoCredit">Photo: CC0 / Wikimedia Commons ↗</a>
-                </article>
-                <article class="news-card">
-                    <img src="{{ url_for('static', filename='images/news-dragon.jpg') }}" alt="Dragon spacecraft hover test" data-i18n-alt="altDragon" loading="lazy">
-                    <div class="news-meta"><span data-i18n="newsCategory3">CREWED SYSTEMS</span><time datetime="2015-11" data-i18n="nov2015">NOVEMBER 2015</time></div>
-                    <h3 data-i18n="newsTitle3">DragonFly: landing system test</h3>
-                    <p data-i18n="newsText3">A ground firing test validated the propulsion system designed for a controlled landing.</p>
-                    <a href="https://commons.wikimedia.org/wiki/File:Dragon_2_hover_test_(24159153709).jpg" target="_blank" rel="noreferrer" data-i18n="photoCredit">Photo: CC0 / Wikimedia Commons ↗</a>
-                </article>
-            </div>
-            <div class="mission-gallery" aria-label="Mission gallery" data-i18n-aria="galleryAria">
-                <img src="{{ url_for('static', filename='images/ORBCOMM-2_1280.jpg') }}" alt="ORBCOMM-2 launch" data-i18n-alt="altOrbcomm" loading="lazy">
-                <img src="{{ url_for('static', filename='images/jcsat_night.jpg') }}" alt="JCSAT-16 night launch" data-i18n-alt="altJcsat" loading="lazy">
-                <img src="{{ url_for('static', filename='images/dragon_abort.jpg') }}" alt="Dragon pad abort test" data-i18n-alt="altAbort" loading="lazy">
-                <img src="{{ url_for('static', filename='images/sarychev_mushroom.jpg') }}" alt="Sarychev volcano eruption from orbit" data-i18n-alt="altVolcano" loading="lazy">
-            </div>
-        </div>
-    </section>
-
-    <!-- =========================================================================
-         STEP 1: ВЫБОР РАКЕТЫ
-         ========================================================================= -->
-    <section id="rockets" class="section">
-        <div class="container">
-            <div class="section-header">
-                <p class="eyebrow" data-i18n="catalogEyebrow">01 / FLEET</p>
-                <h2 class="section-title" data-i18n="catalogTitle">Choose a vehicle</h2>
-                <p class="section-subtitle"><span data-i18n="availableVehicles">Available for simulation:</span> {{ rockets_count }}</p>
-            </div>
-            
-            <div class="rockets-grid">
-                {% for rocket in rockets %}
-                <div class="rocket-card" data-rocket-id="{{ rocket.id }}" data-rocket-name="{{ rocket.name }}">
-                    <div class="rocket-header">
-                        <h3 class="rocket-name">{{ rocket.name }}</h3>
-                        <span class="rocket-index">{{ '%02d'|format(rocket.id) }} / 40</span>
-                    </div>
-                    <p class="rocket-description" data-description-id="{{ rocket.id }}">{% if rocket.id <= 20 %}Launch vehicle for payload deployment and orbital transport missions.{% elif rocket.id <= 23 %}Orbital platform for communications and navigation.{% elif rocket.id == 35 %}Landing module designed for precise planetary surface operations.{% else %}Space platform for research and orbital missions.{% endif %}</p>
-                    <button class="btn btn-select" data-select-rocket data-rocket-id="{{ rocket.id }}" data-rocket-name="{{ rocket.name }}">
-                        <span data-i18n="selectVehicle">Select vehicle</span><span aria-hidden="true">↗</span>
-                    </button>
-                </div>
-                {% endfor %}
-            </div>
-        </div>
-    </section>
-
-    <!-- =========================================================================
-         STEP 2: ВЫБОР КОЛИЧЕСТВА И МЕСТА ДОСТАВКИ
-         ========================================================================= -->
-    <section id="delivery" class="section" style="display: none;">
-        <div class="container">
-            <div class="section-header">
-                <p class="eyebrow" data-i18n="missionEyebrow">02 / MISSION SETTINGS</p>
-                <h2 class="section-title" data-i18n="missionTitle">Set your destination</h2>
-                <p class="section-subtitle"><span data-i18n="selectedVehicle">Selected vehicle:</span> <span id="selectedRocketName" class="highlight"></span></p>
-            </div>
-            
-            <div class="delivery-form">
-                <div class="form-group">
-                    <label class="form-label" for="quantity" data-i18n="quantityLabel">Number of vehicles</label>
-                    <input type="number" id="quantity" class="form-input" value="1" min="1" max="100">
-                    <p class="form-hint" data-i18n="quantityHint">Choose between 1 and 100.</p>
-                </div>
-                
-                <div class="form-group">
-                    <p class="form-label" data-i18n="destinationLabel">Landing coordinates</p>
-                    <p class="form-hint" data-i18n="mapHint">Select a point on the map. The same coordinates orient the 3D planet.</p>
-                    <div class="map-panel">
-                        <div id="worldMap" class="world-map" role="button" tabindex="0" aria-label="World map. Select a destination">
-                            <img src="{{ url_for('static', filename='images/earth/earth_specular_2048.jpg') }}" alt="" draggable="false">
-                            <div class="map-grid" aria-hidden="true"></div>
-                            <span id="mapMarker" class="map-marker" hidden aria-hidden="true"></span>
-                        </div>
-                        <div class="map-readout">
-                            <span data-i18n="coordinatesLabel">TARGET COORDINATES</span>
-                            <output id="selectedCoords" data-i18n="noLocation">No destination selected</output>
-                        </div>
-                    </div>
-                </div>
-                
-                <button id="launchBtn" class="btn btn-primary btn-large" onclick="startDelivery()" disabled>
-                    <span data-i18n="launchSimulation">Start simulation</span><span aria-hidden="true">↗</span>
-                </button>
-            </div>
-        </div>
-    </section>
+    {% include "components/order.html" %}
 
     <!-- =========================================================================
          3D АНИМАЦИЯ
          ========================================================================= -->
     <div id="animationContainer" class="animation-container" style="display: none;" role="dialog" aria-modal="true" aria-label="Cinematic flight simulation" data-i18n-aria="sceneAria">
         <canvas id="globeCanvas"></canvas>
-        <div id="cinemaWhiteout" class="cinema-whiteout"></div>
-        <div id="cinemaNotice" class="cinema-notice" role="status" aria-live="polite">
-            <span data-i18n="noticeEyebrow">MESSAGE RECEIVED</span>
-            <p data-i18n="noticeText">Your next flight is waiting.</p>
+        <p class="cinema-flight-label" id="cinemaFlightLabel" aria-live="polite"></p>
+        <div class="cinema-loading is-visible" role="status" aria-live="polite">
+            <p class="cinema-loading-text">Preparing flight…</p>
+            <div class="cinema-loading-track" aria-hidden="true">
+                <span class="cinema-loading-bar"></span>
+            </div>
+            <p class="cinema-loading-error" hidden></p>
+            <button class="btn btn-primary cinema-loading-return" type="button" data-return-home data-i18n="returnHome" hidden>
+                Return to home
+            </button>
         </div>
+        <div id="cinemaWhiteout" class="cinema-whiteout"></div>
         <div id="cinemaBlackout" class="cinema-blackout"></div>
         <section id="cinemaEndCard" class="cinema-end-card" aria-labelledby="cinemaEndTitle">
             <p data-i18n="missionComplete">SPACEY / MISSION COMPLETE</p>
             <h2 id="cinemaEndTitle" data-i18n="endQuestion">Want to visit your personal client and get a discount on your next order?</h2>
-            <button class="btn btn-primary" type="button" onclick="returnToHome()" data-i18n="returnHome">Return to home</button>
+            <button class="btn btn-primary" type="button" data-return-home data-i18n="returnHome">Return to home</button>
         </section>
     </div>
 
@@ -218,6 +108,7 @@
     
     <!-- Local Scripts -->
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/rocket-animation.js') }}"></script>
+    <script type="module" src="{{ url_for('static', filename='js/order-flow.js') }}"></script>
+    <script type="module" src="{{ url_for('static', filename='js/rocket-animation.js') }}"></script>
 </body>
 </html>

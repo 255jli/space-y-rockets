@@ -1,0 +1,69 @@
+<section id="delivery" class="section order-section">
+    <div class="container">
+        <div class="section-header">
+            <p class="eyebrow" data-i18n="catalogEyebrow">01 / FLEET</p>
+            <h2 class="section-title" data-i18n="missionTitle">Build your mission</h2>
+            <p class="section-subtitle"><span data-i18n="availableVehicles">Available for simulation:</span> {{ rockets_count }}</p>
+        </div>
+
+        <div class="order-layout">
+            <section class="order-picker" aria-labelledby="rocketPickerTitle">
+                <div class="order-column-heading">
+                    <h3 id="rocketPickerTitle" class="order-column-title" data-i18n="catalogTitle">Choose a vehicle</h3>
+                    <span class="order-choice-count">{{ rockets_count }}</span>
+                </div>
+                <div class="rockets-grid">
+                    {% for rocket in rockets %}
+                    <article class="rocket-card" data-rocket-id="{{ rocket.id }}" data-rocket-name="{{ rocket.name }}">
+                        <div class="rocket-header">
+                            <h4 class="rocket-name">{{ rocket.name }}</h4>
+                            <span class="rocket-index">{{ '%02d'|format(rocket.id) }} / 40</span>
+                        </div>
+                        <p class="rocket-description" data-description-id="{{ rocket.id }}">{% if rocket.id <= 20 %}Launch vehicle for payload deployment and orbital transport missions.{% elif rocket.id <= 23 %}Orbital platform for communications and navigation.{% elif rocket.id == 35 %}Landing module designed for precise planetary surface operations.{% else %}Space platform for research and orbital missions.{% endif %}</p>
+                        <button class="btn btn-select" type="button" data-select-rocket data-rocket-id="{{ rocket.id }}" data-rocket-name="{{ rocket.name }}" aria-pressed="false">
+                            <span data-i18n="selectVehicle">Select vehicle</span><span aria-hidden="true">+</span>
+                        </button>
+                    </article>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <div class="delivery-form">
+                <div class="order-summary">
+                    <p class="form-label" data-i18n="selectedVehicle">Selected vehicle</p>
+                    <p id="selectedRocketName" class="order-selected-vehicle">Nothing selected yet</p>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="quantity" data-i18n="quantityLabel">Number of vehicles</label>
+                    <div class="quantity-control">
+                        <button type="button" class="quantity-step" data-quantity-step="-1" data-i18n-aria="quantityDecrease" aria-label="Decrease quantity">−</button>
+                        <input type="number" id="quantity" class="form-input" value="1" min="1" max="10" inputmode="numeric">
+                        <button type="button" class="quantity-step" data-quantity-step="1" data-i18n-aria="quantityIncrease" aria-label="Increase quantity">+</button>
+                    </div>
+                    <p class="form-hint" data-i18n="quantityHint">Choose between 1 and 10.</p>
+                </div>
+
+                <div class="form-group">
+                    <p class="form-label" data-i18n="destinationLabel">Landing coordinates</p>
+                    <p class="form-hint" data-i18n="mapHint">Select a point on the map.</p>
+                    <div class="map-panel">
+                        <div id="worldMap" class="world-map" role="button" tabindex="0" aria-label="World map. Select a destination" data-i18n-aria="mapAria">
+                            <img src="{{ url_for('static', filename='images/earth/earth_specular_2048.jpg') }}" alt="" draggable="false">
+                            <div class="map-grid" aria-hidden="true"></div>
+                            <span id="mapMarker" class="map-marker" hidden aria-hidden="true"></span>
+                        </div>
+                        <div class="map-readout">
+                            <span data-i18n="coordinatesLabel">TARGET COORDINATES</span>
+                            <output id="selectedCoords" data-i18n="noLocation">No destination selected</output>
+                        </div>
+                    </div>
+                </div>
+
+                <button id="launchBtn" class="btn btn-primary btn-large order-launch" type="button" disabled>
+                    <span data-i18n="launchSimulation">Start simulation</span><span aria-hidden="true">↗</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</section>

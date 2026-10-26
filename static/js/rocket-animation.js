@@ -1,504 +1,778 @@
-const SCENE_TIMING = {
-    undock: 6.5,
-    launch: 8.8,
-    flight: 15.8,
-    whiteout: 23.4,
-    notice: 26.1,
-    blackout: 29.2,
-    endCard: 30.7
-};
+const THREE = window.THREE;
+const ASSET_ROOT = '/static';
+const STATION_SCALE = 0.012;
+let STATION_PULL_SECONDS = 18;
+const FLIGHT_SECONDS = 23;
+let WHITEOUT_START = STATION_PULL_SECONDS + FLIGHT_SECONDS + 0.8;
+let BLACKOUT_START = WHITEOUT_START + 3.2;
+let END_CARD_START = BLACKOUT_START + 1.1;
+const STATION_PAYLOAD_LENGTH = 8;
+const ROCKET_LONGITUDINAL_AXIS = new THREE.Vector3(0, 1, 0);
+const ENGINE_POSITIONS = [
+    [0, 0],
+    ...Array.from({ length: 8 }, (_, index) => {
+        const angle = (index / 8) * Math.PI * 2;
+        return [1.25 * Math.cos(angle), 1.25 * Math.sin(angle)];
+    })
+];
 
-const QUALITY_SCALE = Math.min(window.devicePixelRatio || 1, 1.35);
-const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+let renderer;
 let scene;
 let camera;
-let renderer;
+let clock;
+let stationRoot;
+let stationMixer;
+let stationAction;
+let dummyRocket;
+let rocketRoot;
+let rocketModel;
+let flightCurve;
+let rocketBounds;
+let rocketCenter;
+let rocketLength;
+let flames = [];
+let sharedFlameTime;
+let heatSpot;
 let planet;
 let clouds;
-let rocket;
-let station;
-let exhaust;
-let exhaustCore;
-let exhaustLight;
-let frameId;
-let startedAt;
-let sceneGeneration = 0;
-let targetOutward;
-let previousTimestamp = 0;
+let moon;
+let atmosphereMaterial;
+let earthMaterial;
+let resizeHandler;
+let animationFrame = 0;
+let swappedRocket = false;
+let resources = [];
+let activeContainer;
+let disposed = false;
+let rocketStartOrientation;
 
-const vectorUp = new THREE.Vector3(0, 0, 1);
-const tempDirection = new THREE.Vector3();
-const tempPosition = new THREE.Vector3();
-const tempSide = new THREE.Vector3();
+const START_DIRECTION = new THREE.Vector3(1, 0, 0);
+const PLANET_CENTER = new THREE.Vector3(0.35, 0, -8.4);
+const FLIGHT_END = new THREE.Vector3(0.35, 0, -11.9);
+const INITIAL_CAMERA_POSITION = new THREE.Vector3(-0.9, 0.38, -1.22);
+const INITIAL_CAMERA_TARGET = new THREE.Vector3(-0.65, 0, -0.06);
+const FINAL_CAMERA_POSITION = new THREE.Vector3(0.35, 0.7, -1.35);
+const rocketOrientation = new THREE.Quaternion();
+const targetOrientation = new THREE.Quaternion();
+const tempVector = new THREE.Vector3();
+const rocketDirection = new THREE.Vector3(1, 0, 0);
 
-function latLonToVector3(latitude, longitude, radius) {
-    const lat = THREE.MathUtils.degToRad(latitude);
-    const lon = THREE.MathUtils.degToRad(longitude);
-    return new THREE.Vector3(
-        radius * Math.cos(lat) * Math.cos(lon),
-        radius * Math.sin(lat),
-        -radius * Math.cos(lat) * Math.sin(lon)
-    );
+const LOCALIZED_LOADING = {
+    en: { loading: 'Preparing flight…', failed: 'The flight scene could not be loaded.' },
+    ru: { loading: 'Подготовка полёта…', failed: 'Не удалось загрузить сцену полёта.' },
+    zh: { loading: '正在准备飞行…', failed: '无法加载飞行场景。' }
+};
+
+function setLoadingProgress(loaded, total) {
+    const bar = activeContainer?.querySelector('.cinema-loading-bar');
+    const text = activeContainer?.querySelector('.cinema-loading-text');
+    if (!bar || !text) return;
+    const progress = total ? Math.round((loaded / total) * 100) : 0;
+    bar.style.width = `${progress}%`;
+    text.textContent = `${localizedText().loading} ${progress}%`;
 }
 
-function createStars() {
-    const positions = new Float32Array(1600 * 3);
-    for (let i = 0; i < positions.length; i += 3) {
-        const angle = Math.random() * Math.PI * 2;
-        const height = Math.random() * 2 - 1;
-        const radius = 24 + Math.random() * 46;
-        const spread = Math.sqrt(1 - height * height) * radius;
-        positions[i] = Math.cos(angle) * spread;
-        positions[i + 1] = height * radius;
-        positions[i + 2] = Math.sin(angle) * spread;
-    }
+function localizedText() {
+    const language = (document.documentElement.lang || 'en').split('-')[0];
+    return LOCALIZED_LOADING[language] || LOCALIZED_LOADING.en;
+}
 
+function loadGltf(loader, path) {
+    return new Promise((resolve, reject) => {
+        loader.load(path, resolve, undefined, error => {
+            reject(new Error(`Failed to load model ${path}`, { cause: error }));
+        });
+    });
+}
+
+function loadTexture(loader, path, colorTexture = true) {
+    return new Promise((resolve, reject) => {
+        loader.load(path, texture => {
+            if (colorTexture) texture.encoding = THREE.sRGBEncoding;
+            texture.anisotropy = Math.min(8, renderer?.capabilities.getMaxAnisotropy() || 1);
+            resources.push(texture);
+            resolve(texture);
+        }, undefined, error => {
+            reject(new Error(`Failed to load texture ${path}`, { cause: error }));
+        });
+    });
+}
+
+// Wait for every model and texture before creating the scene or starting its clock.
+async function preloadAssets() {
+    const manager = new THREE.LoadingManager();
+    manager.onProgress = (_url, loaded, total) => setLoadingProgress(loaded, total);
+    const gltfLoader = new THREE.GLTFLoader(manager);
+    const textureLoader = new THREE.TextureLoader(manager);
+    const results = await Promise.allSettled([
+        loadGltf(gltfLoader, `${ASSET_ROOT}/models/station.glb`),
+        loadGltf(gltfLoader, `${ASSET_ROOT}/models/rocket.glb`),
+        loadTexture(textureLoader, `${ASSET_ROOT}/images/earth/earth_atmos_2048-summer.jpg`),
+        loadTexture(textureLoader, `${ASSET_ROOT}/images/earth/earth_clouds_1024.png`),
+        loadTexture(textureLoader, `${ASSET_ROOT}/images/earth/moon_1024.jpg`)
+    ]);
+    const failed = results.find(result => result.status === 'rejected');
+    if (failed) throw failed.reason;
+    const [stationGltf, rocketGltf, earthTexture, cloudTexture, moonTexture] =
+        results.map(result => result.value);
+    return { stationGltf, rocketGltf, earthTexture, cloudTexture, moonTexture };
+}
+
+function makeStars() {
+    const count = 1200;
+    const positions = new Float32Array(count * 3);
+    for (let index = 0; index < count; index += 1) {
+        const angle = Math.random() * Math.PI * 2;
+        const vertical = Math.random() * 2 - 1;
+        const radius = 28 + Math.random() * 38;
+        const ring = Math.sqrt(1 - vertical * vertical) * radius;
+        positions[index * 3] = Math.cos(angle) * ring;
+        positions[index * 3 + 1] = vertical * radius;
+        positions[index * 3 + 2] = Math.sin(angle) * ring;
+    }
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
     scene.add(new THREE.Points(
         geometry,
         new THREE.PointsMaterial({
-            color: 0xdbe7ff,
-            size: 0.075,
-            sizeAttenuation: true,
+            color: 0xdce8ff,
+            size: 0.055,
             transparent: true,
-            opacity: 0.76,
+            opacity: 0.78,
+            sizeAttenuation: true,
             depthWrite: false
         })
     ));
 }
 
-function loadTexture(path, onLoad, isColor = true) {
-    new THREE.TextureLoader().load(
-        path,
-        texture => {
-            texture.encoding = isColor ? THREE.sRGBEncoding : THREE.LinearEncoding;
-            onLoad(texture);
-        },
-        undefined,
-        error => console.error(`Не удалось загрузить текстуру ${path}`, error)
-    );
-}
-
-function createAtmosphere() {
-    const atmosphere = new THREE.Mesh(
-        new THREE.SphereGeometry(1.42, 56, 56),
-        new THREE.ShaderMaterial({
-            vertexShader: `
-                varying vec3 viewNormal;
-                varying vec3 viewPosition;
-                void main() {
-                    vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
-                    viewNormal = normalize( normalMatrix * normal );
-                    viewPosition = normalize( -mvPosition.xyz );
-                    gl_Position = projectionMatrix * mvPosition;
-                }
-            `,
-            fragmentShader: `
-                varying vec3 viewNormal;
-                varying vec3 viewPosition;
-                void main() {
-                    float rim = pow( 1.0 - max( dot( viewNormal, viewPosition ), 0.0 ), 3.0 );
-                    gl_FragColor = vec4( 0.18, 0.52, 1.0, rim * 0.68 );
-                }
-            `,
-            side: THREE.BackSide,
-            blending: THREE.AdditiveBlending,
-            transparent: true,
-            depthWrite: false
-        })
-    );
-    planet.add(atmosphere);
-}
-
-function createPlanet(generation) {
+function makePlanet(earthTexture, cloudTexture, moonTexture, latitude, longitude) {
     planet = new THREE.Group();
+    planet.position.copy(PLANET_CENTER);
+    planet.scale.setScalar(1.75);
     scene.add(planet);
 
-    const segments = reducedMotion ? 40 : 56;
+    earthMaterial = new THREE.MeshStandardMaterial({
+        map: earthTexture,
+        roughness: 1,
+        metalness: 0,
+        envMap: null
+    });
     const earth = new THREE.Mesh(
-        new THREE.SphereGeometry(1.35, segments, segments),
-        new THREE.MeshPhongMaterial({
-            color: 0xffffff,
-            specular: 0x183047,
-            shininess: 16
-        })
+        new THREE.SphereGeometry(1, 96, 64),
+        earthMaterial
     );
     planet.add(earth);
-    loadTexture('/static/images/earth/earth_atmos_2048-summer.jpg', texture => {
-        if (generation !== sceneGeneration) return;
-        earth.material.map = texture;
-        earth.material.needsUpdate = true;
-    });
-    loadTexture('/static/images/earth/earth_specular_2048.jpg', texture => {
-        if (generation !== sceneGeneration) return;
-        earth.material.specularMap = texture;
-        earth.material.specular.setHex(0x555555);
-        earth.material.needsUpdate = true;
-    }, false);
 
     clouds = new THREE.Mesh(
-        new THREE.SphereGeometry(1.375, segments, segments),
+        new THREE.SphereGeometry(1.006, 80, 56),
         new THREE.MeshLambertMaterial({
-            color: 0xe4f0ff,
+            map: cloudTexture,
             transparent: true,
-            opacity: 0.48,
+            opacity: 0.2,
             depthWrite: false
         })
     );
     planet.add(clouds);
-    loadTexture('/static/images/earth/earth_clouds_2048.png', texture => {
-        if (generation !== sceneGeneration) return;
-        clouds.material.map = texture;
-        clouds.material.needsUpdate = true;
-    });
-    createAtmosphere();
 
-    const surface = latLonToVector3(targetLatitude, targetLongitude, 1.35);
-    const facing = new THREE.Vector3(0.34, 0.2, 0.92).normalize();
-    planet.quaternion.setFromUnitVectors(surface.clone().normalize(), facing);
-    planet.rotateZ(-0.08);
-    targetOutward = surface.clone().normalize().applyQuaternion(planet.quaternion).normalize();
+    const atmosphere = new THREE.Mesh(
+        new THREE.SphereGeometry(1.035, 64, 48),
+        new THREE.ShaderMaterial({
+            uniforms: { intensity: { value: 0.25 } },
+            vertexShader: `
+                varying vec3 vNormal;
+                varying vec3 vViewDirection;
+                void main() {
+                    vec4 viewPosition = modelViewMatrix * vec4(position, 1.0);
+                    vNormal = normalize(normalMatrix * normal);
+                    vViewDirection = normalize(-viewPosition.xyz);
+                    gl_Position = projectionMatrix * viewPosition;
+                }
+            `,
+            fragmentShader: `
+                uniform float intensity;
+                varying vec3 vNormal;
+                varying vec3 vViewDirection;
+                void main() {
+                    float rim = pow(1.0 - max(dot(normalize(vNormal), normalize(vViewDirection)), 0.0), 2.2);
+                    float alpha = smoothstep(0.04, 0.9, rim) * intensity;
+                    gl_FragColor = vec4(0.2, 0.55, 1.0, alpha);
+                }
+            `,
+            side: THREE.BackSide,
+            transparent: true,
+            depthWrite: false,
+            blending: THREE.AdditiveBlending,
+            toneMapped: false
+        })
+    );
+    atmosphereMaterial = atmosphere.material;
+    planet.add(atmosphere);
+
+    const latitudeRadians = THREE.MathUtils.degToRad(latitude);
+    const longitudeRadians = THREE.MathUtils.degToRad(longitude);
+    const targetSurface = new THREE.Vector3(
+        Math.cos(latitudeRadians) * Math.cos(longitudeRadians),
+        Math.sin(latitudeRadians),
+        -Math.cos(latitudeRadians) * Math.sin(longitudeRadians)
+    ).normalize();
+    planet.quaternion.setFromUnitVectors(targetSurface, new THREE.Vector3(0, 0, 1));
+
+    moon = new THREE.Mesh(
+        new THREE.SphereGeometry(0.13, 40, 28),
+        new THREE.MeshStandardMaterial({
+            map: moonTexture,
+            roughness: 1,
+            metalness: 0
+        })
+    );
+    moon.position.set(2.4, 1.7, -13.5);
+    scene.add(moon);
 }
 
-function createStation() {
-    station = new THREE.Group();
-    scene.add(station);
+function addStation(stationGltf) {
+    stationRoot = stationGltf.scene;
+    stationRoot.scale.setScalar(STATION_SCALE);
+    stationRoot.position.set(0, 0, 0);
+    scene.add(stationRoot);
 
-    const metal = new THREE.MeshStandardMaterial({ color: 0xb5c4d0, metalness: 0.72, roughness: 0.32 });
-    const panel = new THREE.MeshStandardMaterial({
-        color: 0x1a4d75,
-        metalness: 0.35,
-        roughness: 0.42,
-        emissive: 0x071c35
-    });
-    const module = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.075, 0.5, 12), metal);
-    station.add(module);
+    dummyRocket = stationRoot.getObjectByName('dummy_rocket');
+    if (!dummyRocket) throw new Error('station.glb is missing the dummy_rocket node');
+    if (!stationGltf.animations.length) throw new Error('station.glb has no extraction animation');
 
-    const hub = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 10), metal);
-    station.add(hub);
+    stationRoot.updateMatrixWorld(true);
+    dummyRocket.updateWorldMatrix(true, false);
+    INITIAL_CAMERA_TARGET.copy(dummyRocket.getWorldPosition(new THREE.Vector3()));
+    INITIAL_CAMERA_POSITION.copy(INITIAL_CAMERA_TARGET)
+        .add(new THREE.Vector3(-0.25, 0.38, -1.18));
+    camera.position.copy(INITIAL_CAMERA_POSITION);
+    camera.lookAt(INITIAL_CAMERA_TARGET);
 
-    for (const side of [-1, 1]) {
-        const arm = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.035, 0.035), metal);
-        arm.position.x = side * 0.32;
-        station.add(arm);
-        const solarPanel = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.025, 0.29), panel);
-        solarPanel.position.x = side * 0.67;
-        station.add(solarPanel);
+    stationMixer = new THREE.AnimationMixer(stationRoot);
+    stationAction = stationMixer.clipAction(stationGltf.animations[0]);
+    stationAction.setLoop(THREE.LoopOnce, 1);
+    stationAction.clampWhenFinished = true;
+    stationMixer.timeScale = 0.9;
+    const dummyPositionTrack = stationAction.getClip().tracks.find(track =>
+        track.name.includes('dummy_rocket') && track.name.endsWith('.position')
+    );
+    let extractionTime = stationAction.getClip().duration;
+    if (dummyPositionTrack) {
+        const valueSize = dummyPositionTrack.getValueSize();
+        for (let key = 1; key < dummyPositionTrack.times.length; key += 1) {
+            const previous = (key - 1) * valueSize;
+            const current = key * valueSize;
+            let changed = false;
+            for (let axis = 0; axis < valueSize; axis += 1) {
+                if (Math.abs(dummyPositionTrack.values[current + axis] -
+                    dummyPositionTrack.values[previous + axis]) > 1e-5) {
+                    changed = true;
+                    break;
+                }
+            }
+            if (changed) extractionTime = dummyPositionTrack.times[key];
+        }
     }
-
-    const outward = targetOutward.clone();
-    station.position.copy(outward).multiplyScalar(2.58);
-    station.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), outward);
+    STATION_PULL_SECONDS = extractionTime / stationMixer.timeScale;
+    WHITEOUT_START = STATION_PULL_SECONDS + FLIGHT_SECONDS + 0.8;
+    BLACKOUT_START = WHITEOUT_START + 3.2;
+    END_CARD_START = BLACKOUT_START + 1.1;
 }
 
-function createFlame() {
-    const flameMaterial = new THREE.ShaderMaterial({
-        uniforms: { time: { value: 0 } },
-        vertexShader: `
-            varying vec2 flameUv;
-            void main() {
-                flameUv = uv;
-                gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
-            }
-        `,
-        fragmentShader: `
-            uniform float time;
-            varying vec2 flameUv;
-            void main() {
-                float edge = 1.0 - smoothstep( 0.04, 0.5, abs( flameUv.x - 0.5 ) );
-                float taper = smoothstep( 0.0, 0.18, flameUv.y ) * ( 1.0 - smoothstep( 0.84, 1.0, flameUv.y ) );
-                float pulse = 0.82 + 0.18 * sin( time * 24.0 + flameUv.y * 18.0 );
-                vec3 color = mix( vec3( 1.0, 0.2, 0.015 ), vec3( 1.0, 0.92, 0.62 ), smoothstep( 0.35, 0.75, edge ) );
-                gl_FragColor = vec4( color, edge * taper * pulse );
-            }
-        `,
+function makeCoreGeometry(rows = 96, segments = 24) {
+    const positions = [];
+    const uvs = [];
+    const indices = [];
+    for (let row = 0; row <= rows; row += 1) {
+        const height = row / rows;
+        const radius = 0.033 + 0.026 * height + 0.012 * Math.sin(Math.PI * height);
+        for (let segment = 0; segment <= segments; segment += 1) {
+            const angle = (segment / segments) * Math.PI * 2;
+            positions.push(Math.cos(angle) * radius, -height * 5.8, Math.sin(angle) * radius);
+            uvs.push(segment / segments, height);
+        }
+    }
+    for (let row = 0; row < rows; row += 1) {
+        for (let segment = 0; segment < segments; segment += 1) {
+            const vertex = row * (segments + 1) + segment;
+            const nextRow = vertex + segments + 1;
+            indices.push(vertex, nextRow, vertex + 1, nextRow, nextRow + 1, vertex + 1);
+        }
+    }
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    geometry.setIndex(indices);
+    geometry.computeVertexNormals();
+    return geometry;
+}
+
+function makeFlameMaterials() {
+    sharedFlameTime = { value: 0 };
+    const coreGeometry = makeCoreGeometry();
+    const coreMaterials = ENGINE_POSITIONS.map((_, index) => new THREE.ShaderMaterial({
+        uniforms: {
+            uTime: sharedFlameTime,
+            uLength: { value: 5.8 },
+            uWidth: { value: 0.9 },
+            uSeed: { value: index * 17.3 }
+        },
         transparent: true,
         blending: THREE.AdditiveBlending,
         depthWrite: false,
-        side: THREE.DoubleSide
-    });
-    const flame = new THREE.Mesh(new THREE.ConeGeometry(0.095, 0.72, 14, 1, true), flameMaterial);
-    flame.rotation.x = -Math.PI / 2;
-    flame.position.z = -0.82;
-    rocket.add(flame);
+        side: THREE.DoubleSide,
+        toneMapped: false,
+        vertexShader: `
+            uniform float uTime;
+            uniform float uLength;
+            uniform float uWidth;
+            uniform float uSeed;
+            varying float vH;
+            void main() {
+                float h = uv.y;
+                vec3 p = position;
+                p.y = -h * uLength;
+                p.xz *= uWidth;
+                p.x += sin(uTime * 15.0 + h * 25.0 + uSeed) * 0.002 * h;
+                p.z += cos(uTime * 12.0 + h * 21.0 + uSeed) * 0.002 * h;
+                vH = h;
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
+            }
+        `,
+        fragmentShader: `
+            uniform float uTime;
+            uniform float uSeed;
+            varying float vH;
+            void main() {
+                float startFade = smoothstep(0.0, 0.025, vH);
+                float tailFade = 1.0 - smoothstep(0.72, 1.0, vH);
+                float flicker = 0.88 + 0.12 * sin(vH * 55.0 - uTime * 18.0 + uSeed);
+                vec3 orange = vec3(1.0, 0.18, 0.025);
+                vec3 hot = vec3(1.0, 0.93, 0.72);
+                vec3 color = mix(orange, hot, 1.0 - smoothstep(0.0, 0.72, vH));
+                gl_FragColor = vec4(color, startFade * tailFade * flicker * 0.8);
+            }
+        `
+    }));
 
-    const core = new THREE.Mesh(
-        new THREE.ConeGeometry(0.035, 0.42, 10, 1, true),
-        new THREE.MeshBasicMaterial({
-            color: 0xfff2bf,
-            transparent: true,
-            opacity: 0.9,
-            blending: THREE.AdditiveBlending,
-            depthWrite: false
-        })
-    );
-    core.rotation.x = -Math.PI / 2;
-    core.position.z = -0.7;
-    core.visible = false;
-    rocket.add(core);
-    exhaust = flame;
-    exhaustCore = core;
-    exhaustLight = new THREE.PointLight(0xff6a16, 0, 3, 2);
-    exhaustLight.position.z = -0.5;
-    rocket.add(exhaustLight);
-}
-
-function createFallbackRocket() {
-    const body = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.04, 0.055, 0.72, 10),
-        new THREE.MeshStandardMaterial({ color: 0xe8edf2, metalness: 0.55, roughness: 0.35 })
-    );
-    body.rotation.x = Math.PI / 2;
-    body.position.z = 0.02;
-
-    const nose = new THREE.Mesh(
-        new THREE.ConeGeometry(0.04, 0.18, 10),
-        new THREE.MeshStandardMaterial({ color: 0xdce4ec, metalness: 0.45, roughness: 0.3 })
-    );
-    nose.rotation.x = Math.PI / 2;
-    nose.position.z = 0.46;
-    rocket.userData.fallback.add(body, nose);
-}
-
-function loadRocketModel(generation) {
-    if (!THREE.GLTFLoader) {
-        console.error('Three.js GLTFLoader недоступен; используется упрощённая модель ракеты.');
-        return;
+    const particleCount = 720;
+    const along = new Float32Array(particleCount);
+    const angle = new Float32Array(particleCount);
+    const radial = new Float32Array(particleCount);
+    const seed = new Float32Array(particleCount);
+    const size = new Float32Array(particleCount);
+    const speed = new Float32Array(particleCount);
+    for (let index = 0; index < particleCount; index += 1) {
+        along[index] = Math.random() * 1.26;
+        angle[index] = Math.random() * Math.PI * 2;
+        radial[index] = Math.sqrt(Math.random());
+        seed[index] = Math.random();
+        size[index] = 0.025 + Math.random() * 0.075;
+        speed[index] = 0.38 + Math.random() * 0.34;
     }
 
-    new THREE.GLTFLoader().load(
-        '/static/fallcon2000.glb',
-        gltf => {
-            if (generation !== sceneGeneration || !rocket) return;
-            const model = gltf.scene;
-            model.scale.setScalar(0.012);
-            model.position.z = -0.411;
-            rocket.remove(rocket.userData.fallback);
-            rocket.add(model);
-            rocket.userData.model = model;
+    const particleGeometry = new THREE.BufferGeometry();
+    particleGeometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(particleCount * 3), 3));
+    particleGeometry.setAttribute('aAlong', new THREE.BufferAttribute(along, 1));
+    particleGeometry.setAttribute('aAngle', new THREE.BufferAttribute(angle, 1));
+    particleGeometry.setAttribute('aRadial', new THREE.BufferAttribute(radial, 1));
+    particleGeometry.setAttribute('aSeed', new THREE.BufferAttribute(seed, 1));
+    particleGeometry.setAttribute('aSize', new THREE.BufferAttribute(size, 1));
+    particleGeometry.setAttribute('aSpeed', new THREE.BufferAttribute(speed, 1));
+
+    const particleMaterials = ENGINE_POSITIONS.map((_, index) => new THREE.ShaderMaterial({
+        uniforms: {
+            uTime: sharedFlameTime,
+            uLength: { value: 5.8 },
+            uWidth: { value: 0.9 },
+            uSeed: { value: index * 17.3 },
+            uPixelRatio: { value: Math.min(window.devicePixelRatio || 1, 2) }
         },
-        undefined,
-        error => {
-            if (generation === sceneGeneration) {
-                console.error('Не удалось загрузить static/fallcon2000.glb', error);
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        toneMapped: false,
+        vertexShader: `
+            uniform float uTime;
+            uniform float uLength;
+            uniform float uWidth;
+            uniform float uSeed;
+            uniform float uPixelRatio;
+            attribute float aAlong;
+            attribute float aAngle;
+            attribute float aRadial;
+            attribute float aSeed;
+            attribute float aSize;
+            attribute float aSpeed;
+            varying float vH;
+            varying float vSeed;
+            void main() {
+                float h = mod(aAlong + uTime * aSpeed, 1.26);
+                float tail = smoothstep(0.72, 1.22, h);
+                float plumeRadius = 0.025 + 0.045 * h + 0.26 * tail;
+                float theta = aAngle + 0.12 * sin(uTime * 2.7 + aSeed * 35.0 + h * 9.0) * tail;
+                float radius = aRadial * plumeRadius * uWidth;
+                vec3 p = vec3(cos(theta) * radius, -h * uLength, sin(theta) * radius);
+                p.x += sin(uTime * 1.8 + aSeed * 28.0 + h * 12.0) * 0.055 * tail;
+                p.z += cos(uTime * 1.6 + aSeed * 31.0 + h * 10.0) * 0.055 * tail;
+                vec4 viewPosition = modelViewMatrix * vec4(p, 1.0);
+                gl_Position = projectionMatrix * viewPosition;
+                gl_PointSize = clamp(aSize * uPixelRatio * (420.0 / max(1.0, -viewPosition.z)), 1.0, 18.0);
+                vH = h;
+                vSeed = aSeed + uSeed;
             }
-        }
-    );
+        `,
+        fragmentShader: `
+            uniform float uTime;
+            varying float vH;
+            varying float vSeed;
+            void main() {
+                vec2 q = gl_PointCoord - 0.5;
+                float d = length(q) * 2.0;
+                float soft = exp(-d * d * 5.0) * (1.0 - smoothstep(0.65, 1.0, d));
+                float startFade = smoothstep(0.0, 0.07, vH);
+                float tailFade = 1.0 - smoothstep(1.04, 1.26, vH);
+                float flicker = 0.75 + 0.25 * sin(uTime * 16.0 + vSeed * 40.0 + vH * 30.0);
+                vec3 color = mix(vec3(1.0, 0.91, 0.70), vec3(1.0, 0.49, 0.10), smoothstep(0.06, 0.62, vH));
+                color = mix(color, vec3(1.0, 0.16, 0.025), smoothstep(0.55, 1.12, vH));
+                gl_FragColor = vec4(color, soft * startFade * tailFade * (0.035 + 0.055 * fract(vSeed)) * flicker);
+            }
+        `
+    }));
+
+    return { coreGeometry, coreMaterials, particleGeometry, particleMaterials };
 }
 
-function createRocket(generation) {
-    rocket = new THREE.Group();
-    scene.add(rocket);
-    rocket.userData.fallback = new THREE.Group();
-    rocket.add(rocket.userData.fallback);
-    createFallbackRocket();
-    createFlame();
-    loadRocketModel(generation);
+function addRocket(rocketGltf) {
+    rocketModel = rocketGltf.scene;
+    rocketModel.updateMatrixWorld(true);
+    rocketBounds = new THREE.Box3().setFromObject(rocketModel);
+    rocketCenter = rocketBounds.getCenter(new THREE.Vector3());
+    rocketLength = rocketBounds.getSize(new THREE.Vector3()).y;
+    if (!Number.isFinite(rocketLength) || rocketLength <= 0) {
+        throw new Error('rocket.glb has invalid longitudinal bounds');
+    }
+
+    rocketRoot = new THREE.Group();
+    rocketModel.position.sub(rocketCenter);
+    rocketRoot.add(rocketModel);
+    scene.add(rocketRoot);
+
+    const flameAssets = makeFlameMaterials();
+    ENGINE_POSITIONS.forEach(([x, y], index) => {
+        const engine = new THREE.Group();
+        engine.position.set(x, 2.2 - rocketCenter.y, y);
+        engine.visible = false;
+
+        const core = new THREE.Mesh(flameAssets.coreGeometry, flameAssets.coreMaterials[index]);
+        const particles = new THREE.Points(flameAssets.particleGeometry, flameAssets.particleMaterials[index]);
+        engine.add(core, particles);
+        rocketModel.add(engine);
+        flames.push(engine);
+    });
+
+    const heatGeometry = new THREE.SphereGeometry(2.6, 24, 16);
+    const heatMaterial = new THREE.ShaderMaterial({
+        uniforms: { heat: { value: 0 } },
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        toneMapped: false,
+        vertexShader: `
+            varying vec3 vNormal;
+            varying vec3 vViewDirection;
+            void main() {
+                vec4 viewPosition = modelViewMatrix * vec4(position, 1.0);
+                vNormal = normalize(normalMatrix * normal);
+                vViewDirection = normalize(-viewPosition.xyz);
+                gl_Position = projectionMatrix * viewPosition;
+            }
+        `,
+        fragmentShader: `
+            uniform float heat;
+            varying vec3 vNormal;
+            varying vec3 vViewDirection;
+            void main() {
+                float glow = pow(1.0 - abs(dot(normalize(vNormal), normalize(vViewDirection))), 2.0);
+                float alpha = smoothstep(0.02, 0.75, glow) * heat * 0.92;
+                gl_FragColor = vec4(1.0, 0.22 + glow * 0.35, 0.025, alpha);
+            }
+        `
+    });
+    heatSpot = new THREE.Mesh(heatGeometry, heatMaterial);
+    heatSpot.position.set(0, rocketBounds.max.y - rocketCenter.y - 1.5, 0);
+    heatSpot.visible = false;
+    rocketModel.add(heatSpot);
 }
 
-function createScene() {
-    const generation = ++sceneGeneration;
+function createRenderer(container) {
     scene = new THREE.Scene();
     scene.background = new THREE.Color(0x02040a);
-    scene.fog = new THREE.FogExp2(0x02040a, 0.004);
+    scene.fog = new THREE.FogExp2(0x02040a, 0.001);
 
-    camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 160);
-    camera.position.set(0.15, 0.38, 5.1);
-    camera.lookAt(0, 0, 0);
+    camera = new THREE.PerspectiveCamera(46, window.innerWidth / window.innerHeight, 0.02, 100);
+    camera.position.copy(INITIAL_CAMERA_POSITION);
+    camera.lookAt(INITIAL_CAMERA_TARGET);
 
+    const canvas = container.querySelector('#globeCanvas');
     renderer = new THREE.WebGLRenderer({
-        canvas: document.getElementById('globeCanvas'),
-        antialias: QUALITY_SCALE > 1,
-        powerPreference: 'high-performance',
-        alpha: false
+        canvas,
+        antialias: (window.devicePixelRatio || 1) < 2,
+        alpha: false,
+        powerPreference: 'high-performance'
     });
-    renderer.setPixelRatio(QUALITY_SCALE);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.6));
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.outputEncoding = THREE.sRGBEncoding;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.15;
+    renderer.toneMappingExposure = 1.1;
 
-    scene.add(new THREE.AmbientLight(0x9ab5d6, 0.34));
-    const sunlight = new THREE.DirectionalLight(0xffe4c4, 2.2);
-    sunlight.position.set(-4, 3.5, 5);
+    scene.add(new THREE.HemisphereLight(0xb8d7ff, 0x11131c, 0.72));
+    const sunlight = new THREE.DirectionalLight(0xffedda, 2.1);
+    sunlight.position.set(-5, 4, 7);
     scene.add(sunlight);
-    createStars();
-    createPlanet(generation);
-    createStation();
-    createRocket(generation);
+    makeStars();
 }
 
-function smoothstep(value) {
-    const t = THREE.MathUtils.clamp(value, 0, 1);
-    return t * t * (3 - 2 * t);
-}
+function swapToRocket() {
+    if (swappedRocket) return;
+    stationRoot.updateMatrixWorld(true);
+    dummyRocket.updateWorldMatrix(true, false);
+    const dummyPosition = dummyRocket.getWorldPosition(new THREE.Vector3());
 
-function updateCamera(elapsed, flightProgress) {
-    const pan = smoothstep(elapsed / SCENE_TIMING.launch) * (reducedMotion ? 0.09 : 0.22);
-    const orbitPosition = new THREE.Vector3(
-        Math.sin(pan) * 5.1,
-        0.38 + Math.sin(elapsed * 0.16) * 0.025,
-        Math.cos(pan) * 5.1
+    const stationOrientation = new THREE.Quaternion().setFromUnitVectors(
+        ROCKET_LONGITUDINAL_AXIS,
+        START_DIRECTION
     );
-    const orbitLook = new THREE.Vector3(0.08 + pan * 0.8, 0, 0);
-    const follow = smoothstep((elapsed - SCENE_TIMING.launch + 0.3) / 2.2);
-
-    tempDirection.copy(targetOutward).negate();
-    tempPosition.copy(rocket.position).addScaledVector(targetOutward, 2.65);
-    tempSide.crossVectors(tempDirection, new THREE.Vector3(0, 1, 0)).normalize();
-    tempPosition.addScaledVector(tempSide, 0.32);
-
-    const lookPosition = rocket.position.clone().addScaledVector(tempDirection, 0.65);
-    camera.position.copy(orbitPosition.lerp(tempPosition, follow));
-    camera.lookAt(orbitLook.lerp(lookPosition, follow));
-
-    const flightZoom = 1 - Math.max(0, flightProgress) * 0.08;
-    camera.zoom = THREE.MathUtils.lerp(1, flightZoom, follow);
-    camera.updateProjectionMatrix();
-}
-
-function updateRocket(elapsed, delta) {
-    const departureProgress = smoothstep((elapsed - SCENE_TIMING.undock) / 2.3);
-    const flightProgress = THREE.MathUtils.clamp(
-        (elapsed - SCENE_TIMING.launch) / SCENE_TIMING.flight,
-        0,
-        1
+    const initialScale = STATION_SCALE * (STATION_PAYLOAD_LENGTH / rocketLength);
+    rocketRoot.position.copy(dummyPosition);
+    rocketRoot.quaternion.copy(stationOrientation);
+    rocketStartOrientation = stationOrientation.clone();
+    rocketRoot.scale.setScalar(initialScale);
+    flightCurve = new THREE.CubicBezierCurve3(
+        dummyPosition.clone(),
+        dummyPosition.clone().add(new THREE.Vector3(4.5, 0, 0)),
+        FLIGHT_END.clone().add(new THREE.Vector3(0, 0, 3.6)),
+        FLIGHT_END.clone()
     );
-    const travelProgress = flightProgress * flightProgress * (2 - flightProgress);
-    const startingRadius = 2.58;
-    const endingRadius = 1.92;
-    const radius = THREE.MathUtils.lerp(startingRadius, endingRadius, travelProgress);
-    const outward = targetOutward.clone();
-    const tangent = new THREE.Vector3().crossVectors(outward, new THREE.Vector3(0, 1, 0)).normalize();
 
-    tempPosition.copy(outward).multiplyScalar(radius);
-    tempPosition.addScaledVector(tangent, 0.2 * (1 - departureProgress));
-    tempPosition.addScaledVector(outward, 0.3 * (1 - departureProgress));
-    rocket.position.copy(tempPosition);
-    rocket.quaternion.setFromUnitVectors(vectorUp, outward.clone().negate());
-    rocket.rotateY(0.12);
-
-    const ignition = smoothstep((elapsed - SCENE_TIMING.launch + 0.1) / 1.2);
-    const cutoff = 1 - smoothstep((flightProgress - 0.84) / 0.16);
-    const thrust = ignition * cutoff;
-    exhaust.visible = thrust > 0.01;
-    exhaustCore.visible = thrust > 0.01;
-    exhaust.material.uniforms.time.value += delta;
-    exhaust.scale.set(0.85 + Math.sin(elapsed * 29) * 0.12, 0.72 + Math.sin(elapsed * 23) * 0.2, 1);
-    exhaustLight.intensity = 4.5 * thrust * (0.88 + Math.sin(elapsed * 26) * 0.12);
-    rocket.visible = elapsed > 5.5;
-
-    station.visible = elapsed < SCENE_TIMING.undock + 3.2;
-    station.position.copy(outward).multiplyScalar(startingRadius);
-    station.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), outward);
-    return flightProgress;
+    // Keep the replacement centered on the animated dummy before hiding it.
+    dummyRocket.visible = false;
+    rocketRoot.visible = true;
+    swappedRocket = true;
 }
 
-function updateCinema(elapsed) {
-    const whiteout = document.getElementById('cinemaWhiteout');
-    const notice = document.getElementById('cinemaNotice');
-    const blackout = document.getElementById('cinemaBlackout');
-    const endCard = document.getElementById('cinemaEndCard');
-
-    const whiteProgress = smoothstep((elapsed - SCENE_TIMING.whiteout) / 2.5);
-    whiteout.style.opacity = String(whiteProgress);
-    if (elapsed >= SCENE_TIMING.notice) notice.classList.add('is-visible');
-    if (elapsed >= SCENE_TIMING.blackout) {
-        notice.classList.remove('is-visible');
-        blackout.classList.add('is-visible');
-    }
-    if (elapsed >= SCENE_TIMING.endCard) endCard.classList.add('is-visible');
-}
-
-function animate(timestamp) {
-    if (!renderer) return;
-    const delta = previousTimestamp ? Math.min((timestamp - previousTimestamp) / 1000, 0.05) : 0;
-    previousTimestamp = timestamp;
-    const elapsed = (timestamp - startedAt) / 1000;
-
-    planet.rotation.y += delta * (reducedMotion ? 0.0015 : 0.004);
-    clouds.rotation.y += delta * (reducedMotion ? 0.002 : 0.009);
-
-    const flightProgress = updateRocket(elapsed, delta);
-    updateCamera(elapsed, flightProgress);
-    updateCinema(elapsed);
-    renderer.render(scene, camera);
-
-    if (elapsed < SCENE_TIMING.endCard + 1.1) {
-        frameId = requestAnimationFrame(animate);
-    }
-}
-
-function resizeScene() {
-    if (!camera || !renderer) return;
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.35));
-    renderer.setSize(window.innerWidth, window.innerHeight);
-}
-
-function startRocketAnimation() {
-    const container = document.getElementById('animationContainer');
-    container.style.display = 'block';
-    document.body.style.overflow = 'hidden';
-
-    document.getElementById('cinemaWhiteout').style.opacity = '0';
-    document.getElementById('cinemaNotice').classList.remove('is-visible');
-    document.getElementById('cinemaBlackout').classList.remove('is-visible');
-    document.getElementById('cinemaEndCard').classList.remove('is-visible');
-
-    try {
-        createScene();
-    } catch (error) {
-        console.error('Не удалось запустить 3D-сцену.', error);
-        stopRocketAnimation();
-        container.style.display = 'none';
-        document.body.style.overflow = '';
-        document.getElementById('delivery').style.display = 'block';
-        window.alert('Не удалось запустить 3D-сцену. Проверьте поддержку WebGL в браузере.');
+function updateRocket(elapsed, flightProgress, delta) {
+    if (!swappedRocket) {
+        rocketRoot.visible = false;
         return;
     }
 
-    previousTimestamp = 0;
-    startedAt = performance.now();
-    frameId = requestAnimationFrame(animate);
-    window.addEventListener('resize', resizeScene);
+    const startPosition = rocketRoot.userData.flightStart ||
+        (rocketRoot.userData.flightStart = rocketRoot.position.clone());
+    const progress = THREE.MathUtils.clamp(flightProgress, 0, 1);
+    const travel = progress * (0.2 + 0.8 * progress);
+    rocketRoot.position.copy(flightCurve.getPoint(travel));
+    rocketDirection.copy(flightCurve.getTangent(travel)).normalize();
+    targetOrientation.setFromUnitVectors(ROCKET_LONGITUDINAL_AXIS, rocketDirection);
+    const orientationProgress = THREE.MathUtils.smoothstep(progress, 0.01, 0.3);
+    rocketOrientation.slerpQuaternions(rocketStartOrientation, targetOrientation, orientationProgress);
+    rocketRoot.quaternion.copy(rocketOrientation);
+
+    const initialScale = STATION_SCALE * (STATION_PAYLOAD_LENGTH / rocketLength);
+    rocketRoot.scale.setScalar(initialScale);
+
+    const engineThrust = THREE.MathUtils.smoothstep(elapsed, STATION_PULL_SECONDS + 0.15, STATION_PULL_SECONDS + 0.85) *
+        (1 - THREE.MathUtils.smoothstep(progress, 0.84, 1));
+    sharedFlameTime.value += delta;
+    flames.forEach(flame => {
+        flame.visible = engineThrust > 0.01;
+    });
+
+    const heat = THREE.MathUtils.smoothstep(progress, 0.57, 0.76) *
+        (1 - THREE.MathUtils.smoothstep(progress, 0.91, 1));
+    heatSpot.visible = heat > 0.01;
+    heatSpot.material.uniforms.heat.value = heat;
+    heatSpot.scale.setScalar(0.7 + heat * 0.7);
+    if (progress >= 0.985) rocketRoot.visible = false;
+
+    if (planet) {
+        const planetScale = THREE.MathUtils.lerp(1.75, 3.45, THREE.MathUtils.smoothstep(progress, 0.04, 0.94));
+        planet.scale.setScalar(planetScale);
+        clouds.rotation.y += delta * 0.008;
+        atmosphereMaterial.uniforms.intensity.value = 0.2 + progress * 0.8;
+        scene.fog.density = 0.001 + THREE.MathUtils.smoothstep(progress, 0.48, 0.96) * 0.012;
+    }
 }
 
-function stopRocketAnimation() {
-    if (frameId) cancelAnimationFrame(frameId);
-    frameId = null;
-    window.removeEventListener('resize', resizeScene);
-    sceneGeneration += 1;
+function updateCamera(elapsed, flightProgress) {
+    if (elapsed < STATION_PULL_SECONDS + 0.3) {
+        camera.position.lerp(INITIAL_CAMERA_POSITION, 0.025);
+        camera.lookAt(INITIAL_CAMERA_TARGET);
+        return;
+    }
+
+    const follow = THREE.MathUtils.smoothstep(elapsed, STATION_PULL_SECONDS + 0.3, STATION_PULL_SECONDS + 2.3);
+    const chasePosition = rocketRoot.position.clone().addScaledVector(rocketDirection, -1.55);
+    chasePosition.y += 0.45;
+    const releaseCamera = THREE.MathUtils.smoothstep(flightProgress, 0.76, 0.93);
+    const desiredPosition = chasePosition.lerp(FINAL_CAMERA_POSITION, releaseCamera);
+    camera.position.lerp(desiredPosition, 0.035 + follow * 0.04);
+    const planetLook = PLANET_CENTER.clone();
+    const chaseLook = rocketRoot.position.clone().addScaledVector(rocketDirection, 1.4);
+    camera.lookAt(chaseLook.lerp(planetLook, releaseCamera));
+    camera.fov = THREE.MathUtils.lerp(46, 52, THREE.MathUtils.smoothstep(flightProgress, 0, 0.78));
+    camera.updateProjectionMatrix();
+}
+
+function updateOverlays(elapsed) {
+    const whiteout = activeContainer.querySelector('.cinema-whiteout');
+    const blackout = activeContainer.querySelector('.cinema-blackout');
+    const endCard = activeContainer.querySelector('.cinema-end-card');
+    const white = THREE.MathUtils.smoothstep(elapsed, WHITEOUT_START, WHITEOUT_START + 2.3);
+    whiteout.style.opacity = String(white);
+    const black = THREE.MathUtils.smoothstep(elapsed, BLACKOUT_START, BLACKOUT_START + 1.1);
+    blackout.style.opacity = String(black);
+    if (elapsed >= END_CARD_START) endCard.classList.add('is-visible');
+}
+
+function renderFrame() {
+    if (disposed || !renderer) return;
+    const delta = Math.min(clock.getDelta(), 0.05);
+    const elapsed = clock.elapsedTime;
+
+    if (stationMixer) stationMixer.update(delta);
+    if (!swappedRocket && elapsed >= STATION_PULL_SECONDS) swapToRocket();
+
+    const progress = THREE.MathUtils.clamp(
+        (elapsed - STATION_PULL_SECONDS) / FLIGHT_SECONDS,
+        0,
+        1
+    );
+    updateRocket(elapsed, progress, delta);
+    updateCamera(elapsed, progress);
+    updateOverlays(elapsed);
+    renderer.render(scene, camera);
+
+    if (elapsed < END_CARD_START + 2) {
+        animationFrame = requestAnimationFrame(renderFrame);
+    }
+}
+
+function resize() {
+    if (!renderer || !camera) return;
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.6));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+function disposeObject(object) {
+    if (!object) return;
+    object.traverse(child => {
+        child.geometry?.dispose();
+        if (Array.isArray(child.material)) {
+            child.material.forEach(material => material.dispose());
+        } else {
+            child.material?.dispose();
+        }
+    });
+}
+
+export async function initRocketAnimation(containerId) {
+    if (!THREE || !THREE.GLTFLoader) {
+        throw new Error('Three.js and GLTFLoader must load before rocket-animation.js');
+    }
+
+    const container = document.getElementById(containerId);
+    if (!container) throw new Error(`Animation container not found: ${containerId}`);
+
+    stopRocketAnimation();
+    activeContainer = container;
+    container.style.display = 'block';
+    document.body.style.overflow = 'hidden';
+    disposed = false;
+    swappedRocket = false;
+    flames = [];
+    resources = [];
+    container.querySelector('.cinema-loading').classList.add('is-visible');
+    container.querySelector('.cinema-loading-error').hidden = true;
+    container.querySelector('.cinema-loading-return').hidden = true;
+    container.querySelector('.cinema-whiteout').style.opacity = '0';
+    container.querySelector('.cinema-blackout').style.opacity = '0';
+    container.querySelector('.cinema-end-card').classList.remove('is-visible');
+    setLoadingProgress(0, 1);
+
+    const latitude = Number(container.dataset.latitude) || 0;
+    const longitude = Number(container.dataset.longitude) || 0;
+    const assets = await preloadAssets();
+
+    createRenderer(container);
+    addStation(assets.stationGltf);
+    addRocket(assets.rocketGltf);
+    makePlanet(assets.earthTexture, assets.cloudTexture, assets.moonTexture, latitude, longitude);
+    stationAction.reset();
+    stationAction.play();
+
+    const loader = container.querySelector('.cinema-loading');
+    loader.classList.remove('is-visible');
+    clock = new THREE.Clock();
+    resizeHandler = resize;
+    window.addEventListener('resize', resizeHandler);
+    animationFrame = requestAnimationFrame(renderFrame);
+    return { stop: stopRocketAnimation };
+}
+
+export function stopRocketAnimation() {
+    disposed = true;
+    if (animationFrame) cancelAnimationFrame(animationFrame);
+    animationFrame = 0;
+    if (resizeHandler) window.removeEventListener('resize', resizeHandler);
+    resizeHandler = null;
+
     if (scene) {
-        scene.traverse(object => {
-            object.geometry?.dispose();
-            if (Array.isArray(object.material)) {
-                object.material.forEach(disposeMaterial);
-            } else if (object.material) {
-                disposeMaterial(object.material);
-            }
-        });
+        disposeObject(scene);
+        scene.clear();
     }
-    if (renderer) {
-        renderer.dispose();
-    }
+    resources.forEach(resource => resource.dispose());
+    resources = [];
+    renderer?.dispose();
     renderer = null;
     scene = null;
     camera = null;
+    clock = null;
+    stationRoot = null;
+    stationMixer = null;
+    stationAction = null;
+    dummyRocket = null;
+    rocketRoot = null;
+    rocketModel = null;
+    flightCurve = null;
+    rocketStartOrientation = null;
     planet = null;
     clouds = null;
-    rocket = null;
-    station = null;
-    exhaust = null;
-    exhaustCore = null;
-    exhaustLight = null;
+    moon = null;
+    heatSpot = null;
+    flames = [];
+    activeContainer = null;
 }
 
-function disposeMaterial(material) {
-    for (const value of Object.values(material)) {
-        if (value && value.isTexture) value.dispose();
-    }
-    material.dispose();
-}
+window.startRocketAnimation = () => {
+    initRocketAnimation('animationContainer').catch(error => {
+        console.error('Не удалось подготовить сцену полёта.', error);
+        const container = document.getElementById('animationContainer');
+        if (!container) return;
+        const errorMessage = localizedText().failed;
+        stopRocketAnimation();
+        activeContainer = container;
+        const loading = container.querySelector('.cinema-loading');
+        const errorText = container.querySelector('.cinema-loading-error');
+        const returnButton = container.querySelector('.cinema-loading-return');
+        loading?.classList.add('is-visible');
+        if (errorText) {
+            errorText.hidden = false;
+            errorText.textContent = errorMessage;
+        }
+        if (returnButton) returnButton.hidden = false;
+    });
+};
+window.stopRocketAnimation = stopRocketAnimation;

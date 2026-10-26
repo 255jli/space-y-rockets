@@ -1,6 +1,3 @@
-let selectedRocketName = null;
-let targetLatitude = null;
-let targetLongitude = null;
 let currentLanguage = 'en';
 
 const translations = {
@@ -25,13 +22,14 @@ const translations = {
         catalogEyebrow: '01 / FLEET', catalogTitle: 'Choose a vehicle',
         availableVehicles: 'Available for simulation:', selectVehicle: 'Select vehicle',
         missionEyebrow: '02 / MISSION SETTINGS', missionTitle: 'Set your destination',
-        selectedVehicle: 'Selected vehicle:', quantityLabel: 'Number of vehicles',
-        quantityHint: 'Choose between 1 and 100.', destinationLabel: 'Landing coordinates',
+        selectedVehicle: 'Selected vehicle:', noVehicle: 'Nothing selected yet', quantityLabel: 'Number of vehicles',
+        quantityHint: 'Choose between 1 and 10.', quantityDecrease: 'Decrease quantity', quantityIncrease: 'Increase quantity',
+        destinationLabel: 'Landing coordinates',
         mapHint: 'Select a point on the map. The same coordinates orient the 3D planet.',
         coordinatesLabel: 'TARGET COORDINATES', noLocation: 'No destination selected',
         mapAria: 'World map. Select a destination.', launchSimulation: 'Start simulation',
         missionComplete: 'SPACEY / MISSION COMPLETE',
-        endQuestion: 'Want to visit your personal client and get a discount on your next order?',
+        endQuestion: 'Return to the home page?',
         returnHome: 'Return to home',
         noticeEyebrow: 'MESSAGE RECEIVED', noticeText: 'Your next flight is waiting.',
         photoCredit: 'Photo: CC0 / Wikimedia Commons ↗',
@@ -48,7 +46,8 @@ const translations = {
         rocketTypeResearch: 'Space platform for research and orbital missions.',
         latitude: 'LAT', longitude: 'LON',
         selectLocation: 'Please select a destination on the map.',
-        invalidQuantity: 'Choose a quantity between 1 and 100.',
+        selectRocket: 'Please select a vehicle first.',
+        invalidQuantity: 'Choose a quantity between 1 and 10.',
         sceneError: 'The 3D scene could not start. Please check WebGL support in your browser.'
     },
     ru: {
@@ -72,13 +71,14 @@ const translations = {
         catalogEyebrow: '01 / КАТАЛОГ', catalogTitle: 'Выберите аппарат',
         availableVehicles: 'Доступно для симуляции:', selectVehicle: 'Выбрать аппарат',
         missionEyebrow: '02 / ПАРАМЕТРЫ МИССИИ', missionTitle: 'Укажите место доставки',
-        selectedVehicle: 'Выбранный аппарат:', quantityLabel: 'Количество аппаратов',
-        quantityHint: 'Выберите от 1 до 100 аппаратов.', destinationLabel: 'Координаты доставки',
+        selectedVehicle: 'Выбранный аппарат:', noVehicle: 'Пока ничего не выбрано', quantityLabel: 'Количество аппаратов',
+        quantityHint: 'Выберите от 1 до 10 аппаратов.', quantityDecrease: 'Уменьшить количество', quantityIncrease: 'Увеличить количество',
+        destinationLabel: 'Координаты доставки',
         mapHint: 'Выберите точку на карте. Те же координаты зададут положение планеты в 3D-сцене.',
         coordinatesLabel: 'КООРДИНАТЫ ЦЕЛИ', noLocation: 'Место доставки не выбрано',
         mapAria: 'Карта мира. Выберите место доставки.', launchSimulation: 'Начать симуляцию',
         missionComplete: 'SPACEY / МИССИЯ ЗАВЕРШЕНА',
-        endQuestion: 'Хотите зайти в свой личный клиент и получить скидку на следующий заказ?',
+        endQuestion: 'Вернуться на главную?',
         returnHome: 'Вернуться на главную',
         noticeEyebrow: 'СООБЩЕНИЕ ПОЛУЧЕНО', noticeText: 'Следующий полёт уже ждёт.',
         photoCredit: 'Фото: CC0 / Wikimedia Commons ↗',
@@ -95,7 +95,8 @@ const translations = {
         rocketTypeResearch: 'Космическая платформа для исследовательских и орбитальных миссий.',
         latitude: 'ШИРОТА', longitude: 'ДОЛГОТА',
         selectLocation: 'Сначала выберите место доставки на карте.',
-        invalidQuantity: 'Укажите количество от 1 до 100.',
+        selectRocket: 'Сначала выберите аппарат.',
+        invalidQuantity: 'Укажите количество от 1 до 10.',
         sceneError: 'Не удалось запустить 3D-сцену. Проверьте поддержку WebGL в браузере.'
     },
     zh: {
@@ -119,13 +120,14 @@ const translations = {
         catalogEyebrow: '01 / 航天器', catalogTitle: '选择航天器',
         availableVehicles: '可供模拟的配置：', selectVehicle: '选择航天器',
         missionEyebrow: '02 / 任务设置', missionTitle: '设置目的地',
-        selectedVehicle: '已选航天器：', quantityLabel: '航天器数量',
-        quantityHint: '请选择 1 至 100 个。', destinationLabel: '投送坐标',
+        selectedVehicle: '已选航天器：', noVehicle: '尚未选择航天器', quantityLabel: '航天器数量',
+        quantityHint: '请选择 1 至 10 个。', quantityDecrease: '减少数量', quantityIncrease: '增加数量',
+        destinationLabel: '投送坐标',
         mapHint: '在地图上选择位置；相同坐标将用于 3D 地球定位。',
         coordinatesLabel: '目标坐标', noLocation: '尚未选择目的地',
         mapAria: '世界地图。选择目的地。', launchSimulation: '开始模拟',
         missionComplete: 'SPACEY / 任务完成',
-        endQuestion: '想进入个人客户端并获得下一笔订单的折扣吗？',
+        endQuestion: '返回首页？',
         returnHome: '返回首页',
         noticeEyebrow: '消息已收到', noticeText: '下一次飞行已准备就绪。',
         photoCredit: '图片：CC0 / Wikimedia Commons ↗',
@@ -142,9 +144,14 @@ const translations = {
         rocketTypeResearch: '用于科研和轨道任务的航天平台。',
         latitude: '纬度', longitude: '经度',
         selectLocation: '请先在地图上选择目的地。',
-        invalidQuantity: '请输入 1 至 100 之间的数量。',
+        selectRocket: '请先选择航天器。',
+        invalidQuantity: '请输入 1 至 10 之间的数量。',
         sceneError: '无法启动 3D 场景，请检查浏览器是否支持 WebGL。'
     }
+};
+
+window.SpaceY = {
+    getMessages: () => translations[currentLanguage]
 };
 
 function setLanguage(language) {
@@ -191,96 +198,31 @@ function setLanguage(language) {
 
     const map = document.getElementById('worldMap');
     if (map) map.setAttribute('aria-label', messages.mapAria);
-    if (targetLatitude === null) {
-        document.getElementById('selectedCoords').textContent = messages.noLocation;
-    } else {
-        updateCoordinateReadout();
-    }
-}
-
-function updateCoordinateReadout() {
-    const messages = translations[currentLanguage];
-    document.getElementById('selectedCoords').textContent =
-        `${messages.latitude} ${targetLatitude.toFixed(2)}° · ${messages.longitude} ${targetLongitude.toFixed(2)}°`;
-}
-
-function selectLocation(clientX, clientY) {
-    const map = document.getElementById('worldMap');
-    const bounds = map.getBoundingClientRect();
-    const x = Math.max(0, Math.min(1, (clientX - bounds.left) / bounds.width));
-    const y = Math.max(0, Math.min(1, (clientY - bounds.top) / bounds.height));
-    targetLongitude = x * 360 - 180;
-    targetLatitude = 90 - y * 180;
-
-    const marker = document.getElementById('mapMarker');
-    marker.hidden = false;
-    marker.style.left = `${x * 100}%`;
-    marker.style.top = `${y * 100}%`;
-    updateCoordinateReadout();
-    document.getElementById('launchBtn').disabled = false;
-}
-
-function selectRocket(rocketId, rocketName) {
-    selectedRocketName = rocketName;
-    document.querySelectorAll('.rocket-card').forEach(card => {
-        card.classList.toggle('is-selected', Number(card.dataset.rocketId) === rocketId);
-    });
-    document.getElementById('selectedRocketName').textContent = rocketName;
-    const deliverySection = document.getElementById('delivery');
-    deliverySection.style.display = 'block';
-    deliverySection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-}
-
-function startDelivery() {
-    const messages = translations[currentLanguage];
-    if (targetLatitude === null || targetLongitude === null) {
-        window.alert(messages.selectLocation);
-        return;
-    }
-    const quantity = Number(document.getElementById('quantity').value);
-    if (!Number.isInteger(quantity) || quantity < 1 || quantity > 100) {
-        window.alert(messages.invalidQuantity);
-        return;
-    }
-
-    document.getElementById('delivery').style.display = 'none';
-    startRocketAnimation();
-}
-
-function returnToHome() {
-    document.getElementById('animationContainer').style.display = 'none';
-    stopRocketAnimation();
-    document.body.style.overflow = '';
-    selectedRocketName = null;
-    targetLatitude = null;
-    targetLongitude = null;
-    document.querySelectorAll('.rocket-card').forEach(card => card.classList.remove('is-selected'));
-    document.getElementById('delivery').style.display = 'none';
-    document.getElementById('launchBtn').disabled = true;
-    document.getElementById('mapMarker').hidden = true;
-    document.getElementById('selectedCoords').textContent = translations[currentLanguage].noLocation;
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    document.dispatchEvent(new CustomEvent('spacey:language-change', { detail: messages }));
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    document.querySelectorAll('[data-language]').forEach(button => {
-        button.addEventListener('click', () => setLanguage(button.dataset.language));
-    });
-    document.querySelectorAll('[data-select-rocket]').forEach(button => {
-        button.addEventListener('click', () => {
-            selectRocket(Number(button.dataset.rocketId), button.dataset.rocketName);
-        });
-    });
+    const languageMenu = document.querySelector('.language-menu');
+    const languageMenuTrigger = languageMenu?.querySelector('.language-menu-trigger');
 
-    const map = document.getElementById('worldMap');
-    map.addEventListener('click', event => selectLocation(event.clientX, event.clientY));
-    map.addEventListener('keydown', event => {
-        if (event.key === 'Enter' || event.key === ' ') {
-            event.preventDefault();
-            const bounds = map.getBoundingClientRect();
-            selectLocation(bounds.left + bounds.width / 2, bounds.top + bounds.height / 2);
+    languageMenuTrigger?.addEventListener('click', () => {
+        const isOpen = languageMenu.classList.toggle('is-open');
+        languageMenuTrigger.setAttribute('aria-expanded', String(isOpen));
+    });
+    languageMenu?.addEventListener('keydown', event => {
+        if (event.key === 'Escape') {
+            languageMenu.classList.remove('is-open');
+            languageMenuTrigger?.setAttribute('aria-expanded', 'false');
+            languageMenuTrigger?.focus();
         }
     });
 
+    document.querySelectorAll('[data-language]').forEach(button => {
+        button.addEventListener('click', () => {
+            setLanguage(button.dataset.language);
+            languageMenu?.classList.remove('is-open');
+            languageMenuTrigger?.setAttribute('aria-expanded', 'false');
+        });
+    });
     setLanguage('en');
 });
