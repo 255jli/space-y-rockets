@@ -8,6 +8,13 @@ let BLACKOUT_START = WHITEOUT_START + 2.8;
 let END_CARD_START = BLACKOUT_START + 1.0;
 const STATION_PAYLOAD_LENGTH = 8;
 const ROCKET_LONGITUDINAL_AXIS = new THREE.Vector3(0, 1, 0);
+// Visual scale range: tiny in station bay → larger as it approaches the camera.
+const ROCKET_SCALE_NEAR = 0.0045;
+const ROCKET_SCALE_FAR = 0.00115;
+const PLANET_UNIT_RADIUS = 1;
+const PLANET_WORLD_SCALE = 1.85;
+const PLANET_RADIUS = PLANET_UNIT_RADIUS * PLANET_WORLD_SCALE;
+const IMPACT_MARGIN = 0.08;
 const ENGINE_POSITIONS = [
     [0, 0],
     ...Array.from({ length: 8 }, (_, index) => {
@@ -40,7 +47,8 @@ let atmosphereMaterial;
 let earthMaterial;
 let resizeHandler;
 let animationFrame = 0;
-let swappedRocket = false;
+let flightStarted = false;
+let impactReached = false;
 let resources = [];
 let activeContainer;
 let disposed = false;
@@ -49,16 +57,18 @@ let launchAudio = null;
 let explosionAudio = null;
 let explosionTriggered = false;
 let stationDriftVelocity = new THREE.Vector3(0, 0, 0);
+let stationBayScale = 1;
 
-// Flight axis: toward Earth (negative Z from station toward PLANET_CENTER).
 const FLIGHT_FORWARD = new THREE.Vector3(0, 0, -1);
 const PLANET_CENTER = new THREE.Vector3(0.15, -0.35, -9.2);
 const INITIAL_CAMERA_POSITION = new THREE.Vector3(-1.15, 0.55, -1.45);
 const INITIAL_CAMERA_TARGET = new THREE.Vector3(-0.2, 0.05, -0.15);
-const rocketOrientation = new THREE.Quaternion();
 const targetOrientation = new THREE.Quaternion();
-const tempVector = new THREE.Vector3();
 const rocketDirection = new THREE.Vector3(0, 0, -1);
+const _dummyWorldPos = new THREE.Vector3();
+const _dummyWorldQuat = new THREE.Quaternion();
+const _toPlanet = new THREE.Vector3();
+const _camToRocket = new THREE.Vector3();
 
 const LOCALIZED_LOADING = {
     en: { loading: 'Preparing flight…', failed: 'The flight scene could not be loaded.' },
@@ -106,18 +116,26 @@ async function preloadAssets() {
     manager.onProgress = (_url, loaded, total) => setLoadingProgress(loaded, total);
     const gltfLoader = new THREE.GLTFLoader(manager);
     const textureLoader = new THREE.TextureLoader(manager);
+    // Prefer the highest-detail maps available in the repo.
     const results = await Promise.allSettled([
         loadGltf(gltfLoader, `${ASSET_ROOT}/models/station.glb`),
         loadGltf(gltfLoader, `${ASSET_ROOT}/models/rocket.glb`),
-        loadTexture(textureLoader, `${ASSET_ROOT}/images/earth/earth_atmos_2048-summer.jpg`),
-        loadTexture(textureLoader, `${ASSET_ROOT}/images/earth/earth_clouds_1024.png`),
-        loadTexture(textureLoader, `${ASSET_ROOT}/images/earth/moon_1024.jpg`)
+        loadTexture(textureLoader, `${ASSET_ROOT}/images/earth/earth_atmos_4096-winter.jpg`),
+        loadTexture(textureLoader, `${ASSET_ROOT}/images/earth/earth_clouds_2048.png`),
+        loadTexture(textureLoader, `${ASSET_ROOT}/images/earth/moon_1024.jpg`),
+        loadTexture(textureLoader, `${ASSET_ROOT}/images/earth/earth_specular_2048.jpg`, false),
+        loadTexture(textureLoader, `${ASSET_ROOT}/images/earth/earth_lights_2048.png`)
     ]);
     const failed = results.find(result => result.status === 'rejected');
     if (failed) throw failed.reason;
-    const [stationGltf, rocketGltf, earthTexture, cloudTexture, moonTexture] =
-        results.map(result => result.value);
-    return { stationGltf, rocketGltf, earthTexture, cloudTexture, moonTexture };
+    const [
+        stationGltf, rocketGltf, earthTexture, cloudTexture, moonTexture,
+        specularTexture, lightsTexture
+    ] = results.map(result => result.value);
+    return {
+        stationGltf, rocketGltf, earthTexture, cloudTexture, moonTexture,
+        specularTexture, lightsTexture
+    };
 }
 
 function makeStars() {
@@ -147,41 +165,52 @@ function makeStars() {
     ));
 }
 
-function makePlanet(earthTexture, cloudTexture, moonTexture, latitude, longitude) {
+function makePlanet(assets, latitude, longitude) {
+    const {
+        earthTexture, cloudTexture, moonTexture, specularTexture, lightsTexture
+    } = assets;
+
     planet = new THREE.Group();
     planet.position.copy(PLANET_CENTER);
-    // Fixed scale for entire scene — Earth does not shrink or grow at the end.
-    planet.scale.setScalar(1.85);
+    planet.scale.setScalar(PLANET_WORLD_SCALE);
     scene.add(planet);
 
+    // Higher-poly sphere + full PBR-ish stack (color, specular, night lights).
     earthMaterial = new THREE.MeshStandardMaterial({
         map: earthTexture,
-        roughness: 1,
-        metalness: 0,
+        roughnessMap: specularTexture || null,
+        roughness: 0.82,
+        metalness: 0.05,
+        emissiveMap: lightsTexture || null,
+        emissive: lightsTexture ? new THREE.Color(0xffffff) : new THREE.Color(0x000000),
+        emissiveIntensity: lightsTexture ? 0.55 : 0,
         envMap: null
     });
+    if (specularTexture) {
+        // Specular map is treated as roughness: invert-ish by high roughness base.
+        earthMaterial.roughness = 0.9;
+    }
     const earth = new THREE.Mesh(
-        new THREE.SphereGeometry(1, 96, 64),
+        new THREE.SphereGeometry(PLANET_UNIT_RADIUS, 128, 96),
         earthMaterial
     );
-    // Earth body stays static; only clouds rotate.
     planet.add(earth);
 
     clouds = new THREE.Mesh(
-        new THREE.SphereGeometry(1.006, 80, 56),
+        new THREE.SphereGeometry(PLANET_UNIT_RADIUS * 1.008, 96, 64),
         new THREE.MeshLambertMaterial({
             map: cloudTexture,
             transparent: true,
-            opacity: 0.28,
+            opacity: 0.42,
             depthWrite: false
         })
     );
     planet.add(clouds);
 
     const atmosphere = new THREE.Mesh(
-        new THREE.SphereGeometry(1.04, 64, 48),
+        new THREE.SphereGeometry(PLANET_UNIT_RADIUS * 1.045, 64, 48),
         new THREE.ShaderMaterial({
-            uniforms: { intensity: { value: 0.28 } },
+            uniforms: { intensity: { value: 0.32 } },
             vertexShader: `
                 varying vec3 vNormal;
                 varying vec3 vViewDirection;
@@ -197,9 +226,9 @@ function makePlanet(earthTexture, cloudTexture, moonTexture, latitude, longitude
                 varying vec3 vNormal;
                 varying vec3 vViewDirection;
                 void main() {
-                    float rim = pow(1.0 - max(dot(normalize(vNormal), normalize(vViewDirection)), 0.0), 2.2);
-                    float alpha = smoothstep(0.04, 0.9, rim) * intensity;
-                    gl_FragColor = vec4(0.25, 0.55, 1.0, alpha);
+                    float rim = pow(1.0 - max(dot(normalize(vNormal), normalize(vViewDirection)), 0.0), 2.15);
+                    float alpha = smoothstep(0.03, 0.92, rim) * intensity;
+                    gl_FragColor = vec4(0.28, 0.58, 1.0, alpha);
                 }
             `,
             side: THREE.BackSide,
@@ -221,7 +250,6 @@ function makePlanet(earthTexture, cloudTexture, moonTexture, latitude, longitude
     ).normalize();
     planet.quaternion.setFromUnitVectors(targetSurface, new THREE.Vector3(0, 0, 1));
 
-    // Moon in the background behind / above the station.
     moon = new THREE.Mesh(
         new THREE.SphereGeometry(0.22, 48, 32),
         new THREE.MeshStandardMaterial({
@@ -247,7 +275,6 @@ function addStation(stationGltf) {
     stationRoot.updateMatrixWorld(true);
     dummyRocket.updateWorldMatrix(true, false);
     INITIAL_CAMERA_TARGET.copy(dummyRocket.getWorldPosition(new THREE.Vector3()));
-    // Camera sits farther so the extraction process is readable and the rocket looks small.
     INITIAL_CAMERA_POSITION.copy(INITIAL_CAMERA_TARGET)
         .add(new THREE.Vector3(-0.55, 0.62, -1.85));
     camera.position.copy(INITIAL_CAMERA_POSITION);
@@ -462,8 +489,12 @@ function addRocket(rocketGltf) {
     rocketRoot = new THREE.Group();
     rocketModel.position.sub(rocketCenter);
     rocketRoot.add(rocketModel);
-    rocketRoot.visible = false;
+    // Visible from frame 0 — appears together with the station.
+    rocketRoot.visible = true;
     scene.add(rocketRoot);
+
+    stationBayScale = STATION_SCALE * (STATION_PAYLOAD_LENGTH / rocketLength);
+    rocketRoot.scale.setScalar(stationBayScale);
 
     const flameAssets = makeFlameMaterials();
     ENGINE_POSITIONS.forEach(([x, y], index) => {
@@ -535,21 +566,18 @@ function createRenderer(container) {
     renderer.toneMappingExposure = 1.1;
 
     scene.add(new THREE.HemisphereLight(0xb8d7ff, 0x11131c, 0.72));
-    const sunlight = new THREE.DirectionalLight(0xffedda, 2.1);
+    const sunlight = new THREE.DirectionalLight(0xffedda, 2.15);
     sunlight.position.set(-5, 4, 7);
     scene.add(sunlight);
     makeStars();
 }
 
 function setupAudio() {
-    // Quiet ambient launch bed for the whole flight.
     launchAudio = new Audio(`${ASSET_ROOT}/media/launch/crs34_launch_audio.m4a`);
     launchAudio.loop = true;
     launchAudio.volume = 0.22;
     launchAudio.preload = 'auto';
 
-    // STUB: user will replace this path with a CC0 explosion SFX.
-    // File may not exist yet — we fail silently.
     explosionAudio = new Audio(`${ASSET_ROOT}/media/launch/explosion_stub.m4a`);
     explosionAudio.loop = false;
     explosionAudio.volume = 0.85;
@@ -559,11 +587,7 @@ function setupAudio() {
 function startLaunchAudio() {
     if (!launchAudio) return;
     const play = launchAudio.play();
-    if (play && typeof play.catch === 'function') {
-        play.catch(() => {
-            // Autoplay may be blocked until a user gesture; already launched via click.
-        });
-    }
+    if (play && typeof play.catch === 'function') play.catch(() => {});
 }
 
 function stopLaunchAudio() {
@@ -578,125 +602,178 @@ function triggerExplosionStub() {
     if (explosionTriggered) return;
     explosionTriggered = true;
     stopLaunchAudio();
-    // Placeholder for the CC0 explosion the user will drop in later.
     if (explosionAudio) {
         const play = explosionAudio.play();
         if (play && typeof play.catch === 'function') {
             play.catch(() => {
-                // Expected until explosion_stub.m4a is added.
-                console.info('[SpaceY] explosion_stub.m4a missing — drop your CC0 SFX at static/media/launch/explosion_stub.m4a');
+                console.info('[SpaceY] explosion_stub.m4a missing — drop CC0 SFX at static/media/launch/explosion_stub.m4a');
             });
         }
     }
 }
 
-function swapToRocket() {
-    if (swappedRocket) return;
+/** Distance-based scale: farther from camera → smaller; closer → larger. */
+function scaleFromCameraDistance(position) {
+    _camToRocket.copy(position).sub(camera.position);
+    const distance = _camToRocket.length();
+    // Typical distances in this scene: ~0.8 (close) … ~3.5 (bay / far).
+    const t = THREE.MathUtils.clamp((distance - 0.7) / 2.6, 0, 1);
+    return THREE.MathUtils.lerp(ROCKET_SCALE_NEAR, ROCKET_SCALE_FAR, t);
+}
+
+/** Push the rocket out of the planet solid if it intersects. Returns true on impact. */
+function resolvePlanetCollision(position) {
+    _toPlanet.copy(position).sub(PLANET_CENTER);
+    const distance = _toPlanet.length();
+    const minDistance = PLANET_RADIUS + IMPACT_MARGIN;
+    if (distance >= minDistance) return false;
+
+    // Snap to surface shell — visual "hit the ground".
+    if (distance > 1e-5) {
+        _toPlanet.multiplyScalar(minDistance / distance);
+    } else {
+        _toPlanet.set(0, 0, 1).multiplyScalar(minDistance);
+    }
+    position.copy(PLANET_CENTER).add(_toPlanet);
+    return true;
+}
+
+function syncRocketToDummy() {
+    if (!dummyRocket || !rocketRoot) return;
     stationRoot.updateMatrixWorld(true);
     dummyRocket.updateWorldMatrix(true, false);
-    const dummyPosition = dummyRocket.getWorldPosition(new THREE.Vector3());
+    dummyRocket.getWorldPosition(_dummyWorldPos);
+    dummyRocket.getWorldQuaternion(_dummyWorldQuat);
 
-    // Rocket is already pointed toward Earth (nose along -Z / flight forward).
+    rocketRoot.position.copy(_dummyWorldPos);
+    rocketRoot.quaternion.copy(_dummyWorldQuat);
+    // While in the bay, keep station-matched scale so it reads as the payload.
+    rocketRoot.scale.setScalar(stationBayScale);
+    // Hide the low-detail dummy mesh; the real rocket stands in for it.
+    dummyRocket.visible = false;
+}
+
+function beginFlight() {
+    if (flightStarted) return;
+    flightStarted = true;
+
+    stationRoot.updateMatrixWorld(true);
+    dummyRocket.updateWorldMatrix(true, false);
+    const start = dummyRocket.getWorldPosition(new THREE.Vector3());
+
+    // Nose already toward Earth.
     const earthOrientation = new THREE.Quaternion().setFromUnitVectors(
         ROCKET_LONGITUDINAL_AXIS,
         FLIGHT_FORWARD
     );
-    const initialScale = STATION_SCALE * (STATION_PAYLOAD_LENGTH / rocketLength);
-    rocketRoot.position.copy(dummyPosition);
+    rocketRoot.position.copy(start);
     rocketRoot.quaternion.copy(earthOrientation);
     rocketStartOrientation = earthOrientation.clone();
-    rocketRoot.scale.setScalar(initialScale);
     rocketDirection.copy(FLIGHT_FORWARD);
 
-    // Straight dive toward Earth; slight lateral curve so the station stays visible beside the path.
-    const start = dummyPosition.clone();
-    const end = PLANET_CENTER.clone().add(new THREE.Vector3(0.05, 0.15, 1.35));
+    // Path ends just above the planetary surface (collision will clamp the rest).
+    const surfacePoint = PLANET_CENTER.clone().add(
+        new THREE.Vector3(0.02, 0.12, 1).normalize().multiplyScalar(PLANET_RADIUS + IMPACT_MARGIN + 0.05)
+    );
     flightCurve = new THREE.CubicBezierCurve3(
         start,
-        start.clone().add(new THREE.Vector3(0.4, -0.1, -2.8)),
-        end.clone().add(new THREE.Vector3(-0.2, 0.2, 2.0)),
-        end
+        start.clone().add(new THREE.Vector3(0.35, -0.08, -2.6)),
+        surfacePoint.clone().add(new THREE.Vector3(-0.15, 0.25, 1.8)),
+        surfacePoint
     );
 
-    // Station drifts across the frame (perpendicular to the rocket path).
     stationDriftVelocity.set(0.035, 0.004, 0.012);
-
     dummyRocket.visible = false;
-    rocketRoot.visible = true;
-    swappedRocket = true;
     startLaunchAudio();
 }
 
 function updateRocket(elapsed, flightProgress, delta) {
-    if (!swappedRocket) {
-        rocketRoot.visible = false;
+    if (!rocketRoot) return;
+
+    if (!flightStarted) {
+        syncRocketToDummy();
+        return;
+    }
+
+    if (impactReached) {
+        // Freeze on the surface after collision.
+        flames.forEach(flame => { flame.visible = false; });
+        heatSpot.visible = false;
         return;
     }
 
     const progress = THREE.MathUtils.clamp(flightProgress, 0, 1);
-    // Ease-in so acceleration reads after engines light.
     const travel = progress * progress * (3 - 2 * progress);
     rocketRoot.position.copy(flightCurve.getPoint(travel));
     rocketDirection.copy(flightCurve.getTangent(travel)).normalize();
 
-    // Keep nose locked toward the travel direction (already Earth-facing).
+    // Collision with Earth solid.
+    if (resolvePlanetCollision(rocketRoot.position)) {
+        impactReached = true;
+        // Force whiteout timeline from this moment if we hit early.
+        const now = elapsed;
+        if (now < WHITEOUT_START) {
+            WHITEOUT_START = now + 0.15;
+            BLACKOUT_START = WHITEOUT_START + 2.4;
+            END_CARD_START = BLACKOUT_START + 0.9;
+        }
+        triggerExplosionStub();
+    }
+
     targetOrientation.setFromUnitVectors(ROCKET_LONGITUDINAL_AXIS, rocketDirection);
-    rocketRoot.quaternion.slerp(targetOrientation, 0.12);
+    rocketRoot.quaternion.slerp(targetOrientation, 0.14);
 
-    const initialScale = STATION_SCALE * (STATION_PAYLOAD_LENGTH / rocketLength);
-    rocketRoot.scale.setScalar(initialScale);
+    // Gradual size change as the rocket moves closer to / farther from the camera.
+    const desiredScale = scaleFromCameraDistance(rocketRoot.position);
+    const current = rocketRoot.scale.x;
+    const next = THREE.MathUtils.lerp(current, desiredScale, 0.08);
+    rocketRoot.scale.setScalar(next);
 
-    // Engines on for most of the dive; fade near impact whiteout.
     const engineThrust = THREE.MathUtils.smoothstep(elapsed, STATION_PULL_SECONDS + 0.1, STATION_PULL_SECONDS + 0.7) *
-        (1 - THREE.MathUtils.smoothstep(progress, 0.88, 1));
+        (1 - THREE.MathUtils.smoothstep(progress, 0.9, 1));
     sharedFlameTime.value += delta;
     flames.forEach(flame => {
-        flame.visible = engineThrust > 0.01;
+        flame.visible = !impactReached && engineThrust > 0.01;
     });
 
-    // Atmospheric heating as the rocket nears Earth.
-    const heat = THREE.MathUtils.smoothstep(progress, 0.55, 0.82) *
-        (1 - THREE.MathUtils.smoothstep(progress, 0.94, 1));
-    heatSpot.visible = heat > 0.01;
+    // Heat grows with proximity to the atmosphere / surface.
+    _toPlanet.copy(rocketRoot.position).sub(PLANET_CENTER);
+    const altitude = _toPlanet.length() - PLANET_RADIUS;
+    const nearSurface = 1 - THREE.MathUtils.smoothstep(altitude, 0.05, 2.4);
+    const heat = nearSurface * THREE.MathUtils.smoothstep(progress, 0.35, 0.85);
+    heatSpot.visible = heat > 0.02;
     heatSpot.material.uniforms.heat.value = heat;
-    heatSpot.scale.setScalar(0.7 + heat * 1.1);
+    heatSpot.scale.setScalar(0.7 + heat * 1.2);
 
-    if (progress >= 0.99) rocketRoot.visible = false;
-
-    // Station keeps drifting across the view while the rocket flies "along" it.
     if (stationRoot) {
         stationRoot.position.addScaledVector(stationDriftVelocity, delta * 60);
     }
 
     if (planet) {
-        // Earth fixed in scale; clouds accelerate as we approach.
-        const cloudSpeed = 0.01 + progress * progress * 0.55;
+        const cloudSpeed = 0.012 + progress * progress * 0.6;
         clouds.rotation.y += delta * cloudSpeed;
-        atmosphereMaterial.uniforms.intensity.value = 0.28 + progress * 1.1;
+        atmosphereMaterial.uniforms.intensity.value = 0.32 + nearSurface * 1.15;
 
-        // Haze builds toward atmospheric entry (whiteout).
-        const haze = THREE.MathUtils.smoothstep(progress, 0.4, 0.98);
-        scene.fog.density = 0.0008 + haze * 0.045;
+        const haze = THREE.MathUtils.clamp(nearSurface * 0.85 + progress * 0.35, 0, 1);
+        scene.fog.density = 0.0008 + haze * 0.05;
         scene.fog.color.setRGB(
-            THREE.MathUtils.lerp(0.008, 0.85, haze * haze),
-            THREE.MathUtils.lerp(0.016, 0.88, haze * haze),
-            THREE.MathUtils.lerp(0.04, 0.9, haze * haze)
+            THREE.MathUtils.lerp(0.008, 0.88, haze * haze),
+            THREE.MathUtils.lerp(0.016, 0.9, haze * haze),
+            THREE.MathUtils.lerp(0.04, 0.92, haze * haze)
         );
         if (renderer) {
-            renderer.toneMappingExposure = 1.1 + haze * 1.6;
+            renderer.toneMappingExposure = 1.1 + haze * 1.7;
         }
     }
 }
 
 function updateCamera(elapsed, flightProgress) {
-    if (!swappedRocket || elapsed < STATION_PULL_SECONDS + 0.15) {
-        // During extraction: hold a distant observing angle so the process is visible.
+    if (!flightStarted || elapsed < STATION_PULL_SECONDS + 0.15) {
         camera.position.lerp(INITIAL_CAMERA_POSITION, 0.04);
         camera.lookAt(INITIAL_CAMERA_TARGET);
         return;
     }
 
-    // Camera hard-mounted to the rocket: slightly behind and above the nose.
     const follow = THREE.MathUtils.smoothstep(elapsed, STATION_PULL_SECONDS + 0.15, STATION_PULL_SECONDS + 1.4);
     const back = 1.35 - flightProgress * 0.25;
     const up = 0.38 - flightProgress * 0.08;
@@ -704,11 +781,9 @@ function updateCamera(elapsed, flightProgress) {
         .addScaledVector(rocketDirection, -back)
         .add(new THREE.Vector3(0, up, 0));
 
-    // Blend from extraction camera into rocket-mounted view.
     camera.position.lerp(mount, 0.06 + follow * 0.12);
 
     const lookAhead = rocketRoot.position.clone().addScaledVector(rocketDirection, 2.2);
-    // Bias look slightly toward Earth so the planet fills the frame over time.
     const earthBias = THREE.MathUtils.smoothstep(flightProgress, 0.15, 0.85);
     lookAhead.lerp(PLANET_CENTER, earthBias * 0.35);
     camera.lookAt(lookAhead);
@@ -741,7 +816,7 @@ function renderFrame() {
     const elapsed = clock.elapsedTime;
 
     if (stationMixer) stationMixer.update(delta);
-    if (!swappedRocket && elapsed >= STATION_PULL_SECONDS) swapToRocket();
+    if (!flightStarted && elapsed >= STATION_PULL_SECONDS) beginFlight();
 
     const progress = THREE.MathUtils.clamp(
         (elapsed - STATION_PULL_SECONDS) / FLIGHT_SECONDS,
@@ -781,7 +856,8 @@ function disposeObject(object) {
 
 async function initRocketAnimation(containerId) {
     disposed = false;
-    swappedRocket = false;
+    flightStarted = false;
+    impactReached = false;
     explosionTriggered = false;
     stationDriftVelocity.set(0, 0, 0);
 
@@ -810,7 +886,11 @@ async function initRocketAnimation(containerId) {
     setupAudio();
     addStation(assets.stationGltf);
     addRocket(assets.rocketGltf);
-    makePlanet(assets.earthTexture, assets.cloudTexture, assets.moonTexture, latitude, longitude);
+    makePlanet(assets, latitude, longitude);
+
+    // First sync so rocket is already sitting in the bay when the scene opens.
+    syncRocketToDummy();
+
     stationAction.reset();
     stationAction.play();
 
@@ -836,6 +916,8 @@ export function stopRocketAnimation() {
     launchAudio = null;
     explosionAudio = null;
     explosionTriggered = false;
+    flightStarted = false;
+    impactReached = false;
 
     if (scene) {
         disposeObject(scene);
