@@ -3,112 +3,174 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="SpaceY — orbital systems and interactive delivery simulation.">
-    <title>SpaceY — Orbital Systems</title>
-    
-    <!-- Google Fonts -->
+    <meta name="description" content="SpaceY — Starsheep, Fallcon and orbital systems. A satirical landing page.">
+    <title>SpaceY</title>
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700&display=swap" rel="stylesheet">
-    
-    <!-- Local Styles -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
-<body>
-    <!-- =========================================================================
-         HEADER
-         ========================================================================= -->
-    <header class="header">
-        <div class="container">
-            <div class="header-content">
-                <div class="logo" aria-label="SpaceY">
-                    <span class="logo-word">Space</span>
-                    <img class="logo-y" src="{{ url_for('static', filename='css/word_Y.svg') }}" alt="">
-                </div>
-                <div class="language-menu">
-                    <button class="language-menu-trigger" type="button" aria-haspopup="true" aria-expanded="false">
-                        Язык
-                    </button>
-                    <div class="language-menu-options" aria-label="Выберите язык">
-                        <button type="button" data-language="en" aria-pressed="true">Английский язык</button>
-                        <button type="button" data-language="ru" aria-pressed="false">Русский язык</button>
-                        <button type="button" data-language="zh" aria-pressed="false">Китайский язык</button>
-                    </div>
-                </div>
-            </div>
+<body class="landing-page">
+
+    <!-- =========================================================
+         FIXED NAV (SpaceX-like)
+         ========================================================= -->
+    <header class="spx-header" id="siteHeader">
+        <div class="spx-header-inner">
+            <a class="spx-logo" href="/" aria-label="SpaceY">
+                <span class="spx-logo-word">SPACE</span><span class="spx-logo-y">Y</span>
+            </a>
+
+            <nav class="spx-nav" aria-label="Primary">
+                <a href="#" class="spx-nav-link" tabindex="-1">FALCON 9</a>
+                <a href="#" class="spx-nav-link" tabindex="-1">FALCON HEAVY</a>
+                <a href="#" class="spx-nav-link" tabindex="-1">STARSHEEP</a>
+                <a href="#" class="spx-nav-link" tabindex="-1">HUMAN SPACEFLIGHT</a>
+                <a href="#" class="spx-nav-link" tabindex="-1">RIDESHARE</a>
+                <a href="#" class="spx-nav-link" tabindex="-1">STARLINK</a>
+            </nav>
+
+            <button class="spx-menu-btn" type="button" aria-label="Menu" aria-expanded="false" id="menuToggle">
+                <span></span><span></span><span></span>
+            </button>
         </div>
     </header>
 
-    <!-- =========================================================================
-         HERO SECTION
-         ========================================================================= -->
-    <section id="home" class="hero hero-launch">
-        <video class="hero-video" autoplay muted loop playsinline preload="metadata" aria-hidden="true">
+    <!-- Mobile drawer (links mostly non-functional) -->
+    <div class="spx-drawer" id="mobileDrawer" hidden>
+        <a href="#">FALCON 9</a>
+        <a href="#">FALCON HEAVY</a>
+        <a href="#">STARSHEEP</a>
+        <a href="#">HUMAN SPACEFLIGHT</a>
+        <a href="#">RIDESHARE</a>
+        <a href="#">STARLINK</a>
+        <a href="{{ url_for('mission') }}">MISSION SIMULATOR</a>
+    </div>
+
+    <!-- =========================================================
+         PANEL 1 — Hero video (Starsheep Flight)
+         ========================================================= -->
+    <section class="spx-panel spx-panel--video" id="panel-flight">
+        <video class="spx-panel-media" autoplay muted loop playsinline preload="metadata" aria-hidden="true">
             <source src="{{ url_for('static', filename='media/launch/crs34_launch_video.mp4') }}" type="video/mp4">
         </video>
-        <div class="container hero-content">
-            <div class="hero-copy">
-                <p class="hero-eyebrow">STARSHEEP</p>
-                <h1 class="hero-title">Starsheep Flight 24</h1>
-                <button class="btn btn-primary hero-watch" type="button" data-scroll-to-order data-i18n="browseFleet">Explore the fleet</button>
-            </div>
+        <div class="spx-panel-scrim"></div>
+        <div class="spx-panel-content">
+            <p class="spx-eyebrow">RECENT LAUNCH</p>
+            <h1 class="spx-headline">STARSHEEP FLIGHT 24</h1>
+            <a class="spx-cta" href="{{ url_for('mission') }}">WATCH</a>
         </div>
     </section>
 
-    {% include "components/order.html" %}
-
-    <!-- =========================================================================
-         3D АНИМАЦИЯ
-         ========================================================================= -->
-    <div id="animationContainer" class="animation-container" style="display: none;" role="dialog" aria-modal="true" aria-label="Cinematic flight simulation" data-i18n-aria="sceneAria">
-        <canvas id="globeCanvas"></canvas>
-        <p class="cinema-flight-label" id="cinemaFlightLabel" aria-live="polite"></p>
-        <div class="cinema-loading is-visible" role="status" aria-live="polite">
-            <p class="cinema-loading-text">Preparing flight…</p>
-            <div class="cinema-loading-track" aria-hidden="true">
-                <span class="cinema-loading-bar"></span>
-            </div>
-            <p class="cinema-loading-error" hidden></p>
-            <button class="btn btn-primary cinema-loading-return" type="button" data-return-home data-i18n="returnHome" hidden>
-                Return to home
-            </button>
+    <!-- =========================================================
+         PANEL 2 — Making life multiplanetary
+         ========================================================= -->
+    <section class="spx-panel" id="panel-multiplanetary">
+        <img class="spx-panel-media" src="{{ url_for('static', filename='images/SpaceX_Crew-5_Launch_Photos.jpeg') }}" alt="" loading="lazy">
+        <div class="spx-panel-scrim"></div>
+        <div class="spx-panel-content">
+            <h2 class="spx-headline">MAKING LIFE MULTIPLANETARY</h2>
+            <p class="spx-body">%%%% ##@@ &&&& **** %%%% ##@@ &&&& **** %%%% ##@@ &&&& **** %%%% ##@@ &&&& **** %%%% ##@@ &&&& ****</p>
+            <a class="spx-cta" href="#">EXPLORE</a>
         </div>
-        <div id="cinemaWhiteout" class="cinema-whiteout"></div>
-        <div id="cinemaBlackout" class="cinema-blackout"></div>
-        <section id="cinemaEndCard" class="cinema-end-card" aria-labelledby="cinemaEndTitle">
-            <p data-i18n="missionComplete">SPACEY / MISSION COMPLETE</p>
-            <h2 id="cinemaEndTitle" data-i18n="endQuestion">Want to visit your personal client and get a discount on your next order?</h2>
-            <button class="btn btn-primary" type="button" data-return-home data-i18n="returnHome">Return to home</button>
-        </section>
-    </div>
+    </section>
 
-    <!-- =========================================================================
+    <!-- =========================================================
+         PANEL 3 — Starsheep system
+         ========================================================= -->
+    <section class="spx-panel" id="panel-starsheep">
+        <img class="spx-panel-media" src="{{ url_for('static', filename='images/SpaceX_Crew_Dragon.jpg') }}" alt="" loading="lazy">
+        <div class="spx-panel-scrim"></div>
+        <div class="spx-panel-content">
+            <h2 class="spx-headline">STARSHEEP & SUPER HEAVY</h2>
+            <p class="spx-body">%%%% ##@@ &&&& **** %%%% ##@@ &&&& **** %%%% ##@@ &&&& **** %%%% ##@@ &&&& **** %%%% ##@@ &&&& **** %%%% ##@@</p>
+            <a class="spx-cta" href="#">LEARN MORE</a>
+        </div>
+    </section>
+
+    <!-- =========================================================
+         PANEL 4 — Launch provider
+         ========================================================= -->
+    <section class="spx-panel" id="panel-launches">
+        <img class="spx-panel-media" src="{{ url_for('static', filename='images/jcsat_night.jpg') }}" alt="" loading="lazy">
+        <div class="spx-panel-scrim"></div>
+        <div class="spx-panel-content">
+            <h2 class="spx-headline">WORLD&rsquo;S LEADING LAUNCH SERVICE</h2>
+            <p class="spx-body">%%%% ##@@ &&&& **** %%%% ##@@ &&&& **** %%%% ##@@ &&&& **** %%%% ##@@ &&&& ****</p>
+            <a class="spx-cta" href="{{ url_for('mission') }}">RESERVE YOUR RIDE</a>
+        </div>
+    </section>
+
+    <!-- =========================================================
+         PANEL 5 — Human spaceflight
+         ========================================================= -->
+    <section class="spx-panel" id="panel-crew">
+        <img class="spx-panel-media" src="{{ url_for('static', filename='images/dragon_abort.jpg') }}" alt="" loading="lazy">
+        <div class="spx-panel-scrim"></div>
+        <div class="spx-panel-content">
+            <h2 class="spx-headline">ADVANCING HUMAN SPACEFLIGHT</h2>
+            <p class="spx-body">%%%% ##@@ &&&& **** %%%% ##@@ &&&& **** %%%% ##@@ &&&& **** %%%% ##@@ &&&& **** %%%% ##@@ &&&& ****</p>
+            <a class="spx-cta" href="#">JOIN A MISSION</a>
+        </div>
+    </section>
+
+    <!-- =========================================================
+         PANEL 6 — Final CTA / archive
+         ========================================================= -->
+    <section class="spx-panel" id="panel-archive">
+        <img class="spx-panel-media" src="{{ url_for('static', filename='images/crs9_double_beam.jpg') }}" alt="" loading="lazy">
+        <div class="spx-panel-scrim"></div>
+        <div class="spx-panel-content">
+            <h2 class="spx-headline">MISSION ARCHIVE</h2>
+            <p class="spx-body">%%%% ##@@ &&&& **** %%%% ##@@ &&&& **** %%%% ##@@ &&&& ****</p>
+            <a class="spx-cta" href="{{ url_for('mission') }}">OPEN SIMULATOR</a>
+        </div>
+    </section>
+
+    <!-- =========================================================
          FOOTER
-         ========================================================================= -->
-    <footer id="footer" class="footer">
-        <div class="container">
-            <div class="footer-content">
-                <p class="footer-logo">SPACEY</p>
-                <p class="footer-text" data-i18n-html="footerText">
-                    SpaceY is a fictional project for an interactive space delivery simulation.<br>
-                    No vehicle has left Earth. Not even in our imagination.
-                </p>
-                <p class="footer-copyright" data-i18n="footerCopyright">© 2026 SpaceY / All missions are simulated.</p>
-            </div>
+         ========================================================= -->
+    <footer class="spx-footer">
+        <div class="spx-footer-inner">
+            <p class="spx-footer-brand">SPACEY</p>
+            <ul class="spx-footer-links">
+                <li><a href="#">Twitter</a></li>
+                <li><a href="#">YouTube</a></li>
+                <li><a href="#">Instagram</a></li>
+                <li><a href="#">Flickr</a></li>
+                <li><a href="#">LinkedIn</a></li>
+                <li><a href="#">Privacy</a></li>
+                <li><a href="#">Suppliers</a></li>
+            </ul>
+            <p class="spx-footer-note">SpaceY is a fictional satirical project. No vehicles are sold or delivered. Images used under CC0 / public domain where noted in the project catalog.</p>
+            <p class="spx-footer-copy">&copy; 2026 SpaceY</p>
         </div>
     </footer>
 
-    <!-- =========================================================================
-         SCRIPTS
-         ========================================================================= -->
-    
-    <!-- Three.js через CDN -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://unpkg.com/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
-    
-    <!-- Local Scripts -->
-    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
-    <script type="module" src="{{ url_for('static', filename='js/order-flow.js') }}"></script>
-    <script type="module" src="{{ url_for('static', filename='js/rocket-animation.js') }}"></script>
+    <script>
+        (function () {
+            const header = document.getElementById('siteHeader');
+            const toggle = document.getElementById('menuToggle');
+            const drawer = document.getElementById('mobileDrawer');
+
+            window.addEventListener('scroll', function () {
+                if (window.scrollY > 40) header.classList.add('is-scrolled');
+                else header.classList.remove('is-scrolled');
+            }, { passive: true });
+
+            toggle.addEventListener('click', function () {
+                const open = drawer.hasAttribute('hidden');
+                if (open) {
+                    drawer.removeAttribute('hidden');
+                    toggle.setAttribute('aria-expanded', 'true');
+                } else {
+                    drawer.setAttribute('hidden', '');
+                    toggle.setAttribute('aria-expanded', 'false');
+                }
+            });
+        })();
+    </script>
 </body>
 </html>
