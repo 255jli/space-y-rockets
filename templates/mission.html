@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="SpaceY Mission Simulator — choose a vehicle and launch.">
+    <title>SpaceY — Mission Simulator</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="mission-page">
+
+    <header class="spx-header is-scrolled mission-header">
+        <div class="spx-header-inner">
+            <a class="spx-logo" href="/" aria-label="SpaceY">
+                <span class="spx-logo-word">SPACE</span><span class="spx-logo-y">Y</span>
+            </a>
+            <nav class="spx-nav" aria-label="Primary">
+                <a href="/" class="spx-nav-link">HOME</a>
+                <a href="#delivery" class="spx-nav-link">FLEET</a>
+            </nav>
+            <a class="spx-cta spx-cta--compact" href="/">BACK TO LANDING</a>
+        </div>
+    </header>
+
+    <main class="mission-main">
+        {% include "components/order.html" %}
+    </main>
+
+    <!-- 3D animation overlay -->
+    <div id="animationContainer" class="animation-container" style="display: none;" role="dialog" aria-modal="true" aria-label="Cinematic flight simulation">
+        <canvas id="globeCanvas"></canvas>
+        <p class="cinema-flight-label" id="cinemaFlightLabel" aria-live="polite"></p>
+        <div class="cinema-loading is-visible" role="status" aria-live="polite">
+            <p class="cinema-loading-text">Preparing flight…</p>
+            <div class="cinema-loading-track" aria-hidden="true">
+                <span class="cinema-loading-bar"></span>
+            </div>
+            <p class="cinema-loading-error" hidden></p>
+            <button class="btn btn-primary cinema-loading-return" type="button" data-return-home hidden>
+                Return
+            </button>
+        </div>
+        <div id="cinemaWhiteout" class="cinema-whiteout"></div>
+        <div id="cinemaBlackout" class="cinema-blackout"></div>
+        <section id="cinemaEndCard" class="cinema-end-card" aria-labelledby="cinemaEndTitle">
+            <p>SPACEY / MISSION COMPLETE</p>
+            <h2 id="cinemaEndTitle">Want to run another simulation?</h2>
+            <button class="btn btn-primary" type="button" data-return-home>Return</button>
+        </section>
+    </div>
+
+    <footer class="spx-footer">
+        <div class="spx-footer-inner">
+            <p class="spx-footer-brand">SPACEY</p>
+            <p class="spx-footer-note">SpaceY is a fictional satirical project. No vehicles are sold or delivered.</p>
+            <p class="spx-footer-copy">&copy; 2026 SpaceY</p>
+        </div>
+    </footer>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://unpkg.com/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script type="module" src="{{ url_for('static', filename='js/order-flow.js') }}"></script>
+    <script type="module" src="{{ url_for('static', filename='js/rocket-animation.js') }}"></script>
+</body>
+</html>
