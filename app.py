@@ -39,14 +39,12 @@ app.config['FREEZER_STATIC_IGNORE'] = ['*.db', '*.sqlite']
 def load_rockets():
     """
     Загружает данные о ракетах из JSON файла.
-    
+
     Returns:
         list: Список ракет из static/rockets.json
     """
     try:
-        # Путь к файлу rockets.json
         json_path = os.path.join(app.static_folder, 'rockets.json')
-        
         with open(json_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
             return data.get('rockets', [])
@@ -65,14 +63,19 @@ def load_rockets():
 @app.route('/')
 def index():
     """
-    Главная страница сайта.
-    
-    Рендерит шаблон index.html с данными о ракетах.
+    Главный лендинг (SpaceX-style).
+    """
+    return render_template('index.html')
+
+
+@app.route('/mission')
+def mission():
+    """
+    Страница выбора ракеты и запуска симуляции.
     """
     rockets = load_rockets()
-    
     return render_template(
-        'index.html',
+        'mission.html',
         rockets=rockets,
         rockets_count=len(rockets)
     )
@@ -82,14 +85,8 @@ def index():
 def api_rockets():
     """
     REST API endpoint - возвращает список ракет в формате JSON.
-    
-    Используется JavaScript для динамической загрузки данных.
-    
-    Returns:
-        JSON: Список ракет
     """
     rockets = load_rockets()
-    
     return jsonify({
         'success': True,
         'count': len(rockets),
@@ -101,24 +98,14 @@ def api_rockets():
 def api_rocket(rocket_id):
     """
     REST API endpoint - возвращает данные конкретной ракеты.
-    
-    Args:
-        rocket_id (int): ID ракеты
-    
-    Returns:
-        JSON: Данные ракеты или ошибка 404
     """
     rockets = load_rockets()
-    
-    # Ищем ракету по ID
     for rocket in rockets:
         if rocket['id'] == rocket_id:
             return jsonify({
                 'success': True,
                 'rocket': rocket
             })
-    
-    # Если не нашли
     return jsonify({
         'success': False,
         'error': 'Rocket not found'
@@ -131,7 +118,6 @@ def api_rocket(rocket_id):
 
 @app.errorhandler(404)
 def not_found(error):
-    """Обработчик ошибки 404"""
     return jsonify({
         'error': 'Not Found',
         'message': 'Эта ракета улетела в другую галактику'
@@ -140,7 +126,6 @@ def not_found(error):
 
 @app.errorhandler(500)
 def internal_error(error):
-    """Обработчик ошибки 500"""
     return jsonify({
         'error': 'Internal Server Error',
         'message': 'Хьюстон, у нас проблема!'
@@ -152,22 +137,16 @@ def internal_error(error):
 # =============================================================================
 
 if __name__ == '__main__':
-    """
-    Точка входа в приложение.
-    
-    Запускает Flask development server на порту 8000.
-    """
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("🚀 SpaceY Rockets - Limited Edition")
     print("   by Elan Mask")
-    print("="*60)
+    print("=" * 60)
     print("\n📡 Server starting...")
     print("🌐 Open in browser: http://localhost:8000")
     print("\n📦 To generate static site:")
     print("   python freeze.py")
-    print("="*60 + "\n")
-    
-    # Запуск сервера
+    print("=" * 60 + "\n")
+
     app.run(
         debug=True,
         host='0.0.0.0',
