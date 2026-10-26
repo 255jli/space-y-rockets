@@ -1,0 +1,14 @@
+Commit plan (each numbered line is one logical commit):
+
+1. chore(assets): organize model tooling and add launch assets
+   .gitignore; scripts/rocket/; scripts/station build tools; download tools;
+   spacex_layout.json; static/css/word_Y.svg; static/media/; static/models/;
+   remove obsolete generated files from static/.
+
+2. feat(order-flow): add modular rocket ordering and launch experience
+   templates/; static/css/style.css; static/js/main.js;
+   static/js/order-flow.js; static/js/rocket-animation.js.
+
+3. docs(project): document setup, architecture, and contributor instructions
+   README.md; DEPLOYMENT.md; scripts/station/SETUP.txt;
+   .github/copilot-instructions.md; COMMIT_PLAN.txt.

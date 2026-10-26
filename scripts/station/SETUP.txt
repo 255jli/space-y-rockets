@@ -1,0 +1,46 @@
+=== УСТАНОВКА BLENDER 4.4.3 В ЧИСТОМ CODESPACES ===
+
+Требуется: Ubuntu-контейнер (Codespaces по умолчанию).
+Не требуется: Python 3.11, pip install bpy, root-права на постоянку.
+
+ШАГ 1 — Запустить установочный скрипт (из корня проекта):
+    chmod +x scripts/station/install_blender.sh
+    bash scripts/station/install_blender.sh
+
+Скрипт делает 4 вещи:
+  1) apt-get update + базовые утилиты (wget, xz-utils)
+  2) apt-get install системных библиотек X11/OpenGL, без которых
+     бинарник Blender не стартует даже в --background
+     (libxfixes3, libxxf86vm1, libxi6, libgl1, libegl1 и др.)
+  3) Скачивает официальный архив Blender 4.4.3 (~350 МБ)
+     с download.blender.org и распаковывает в текущую папку
+  4) Создаёт симлинк /usr/local/bin/blender → распакованный бинарник
+
+ШАГ 2 — Проверить:
+    blender --version
+    Ожидаемый вывод: "Blender 4.4.3" и build-информация.
+
+ШАГ 3 — Сгенерировать модель:
+    cd scripts/station
+    blender --background --python station_build.py
+    blender --background --python station_export.py
+
+Ожидаемые артефакты:
+    scripts/station/station_base.blend
+    static/models/station.glb
+
+ТИПОВЫЕ ОШИБКИ И РЕШЕНИЯ:
+  • "libXfixes.so.3: cannot open shared object file"
+       → перезапустить install_blender.sh (шаг 2 в нём это лечит)
+  • "python3.11: command not found"
+       → не нужен. Мы не используем pip install bpy. Только бинарник.
+  • "No such file or directory: station_build.py"
+       → запускать команды из папки scripts/station/, где лежат скрипты.
+  • Пути //station_base.blend и //../../static/models/station.glb
+       → относительные, разрешаются от папки сохранённого Blender-файла.
+
+ПОЧЕМУ НЕ PIP INSTALL BPY:
+  Пакет bpy на PyPI собран только под Python 3.11 и не имеет
+  колёс под 3.14 (который стоит в Codespaces по умолчанию).
+  Официальный бинарник Blender работает без Python-зависимостей
+  хоста — это самый надёжный путь.
