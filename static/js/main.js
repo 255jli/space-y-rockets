@@ -201,6 +201,41 @@ function setLanguage(language) {
     document.dispatchEvent(new CustomEvent('spacey:language-change', { detail: messages }));
 }
 
+// =============================================================================
+// ЗАЩИТА ТЕКСТА ОТ КОПИРОВАНИЯ
+// Блокируем выделение, копирование и контекстное меню на текстовых блоках.
+// Поля ввода (input/textarea) работают как обычно.
+// =============================================================================
+const isEditableTarget = target => {
+    if (!(target instanceof Element)) return false;
+    return Boolean(target.closest('input, textarea, select, [contenteditable="true"], [contenteditable=""]'));
+};
+
+document.addEventListener('copy', event => {
+    if (!isEditableTarget(event.target)) {
+        event.preventDefault();
+        event.clipboardData?.clearData();
+    }
+});
+
+document.addEventListener('cut', event => {
+    if (!isEditableTarget(event.target)) {
+        event.preventDefault();
+    }
+});
+
+document.addEventListener('contextmenu', event => {
+    if (!isEditableTarget(event.target)) {
+        event.preventDefault();
+    }
+});
+
+document.addEventListener('selectstart', event => {
+    if (!isEditableTarget(event.target)) {
+        event.preventDefault();
+    }
+});
+
 document.addEventListener('DOMContentLoaded', () => {
     const languageMenu = document.querySelector('.language-menu');
     const languageMenuTrigger = languageMenu?.querySelector('.language-menu-trigger');
@@ -215,6 +250,44 @@ document.addEventListener('DOMContentLoaded', () => {
             languageMenuTrigger?.setAttribute('aria-expanded', 'false');
             languageMenuTrigger?.focus();
         }
+    });
+
+    // Topbar dropdown menus (SpaceX-style): toggle on click for touch/keyboard users.
+    const navDropdowns = document.querySelectorAll('.nav-dropdown');
+    navDropdowns.forEach(dropdown => {
+        const trigger = dropdown.querySelector('.nav-dropdown-trigger');
+        trigger?.addEventListener('click', () => {
+            const isOpen = dropdown.classList.toggle('is-open');
+            trigger.setAttribute('aria-expanded', String(isOpen));
+            navDropdowns.forEach(other => {
+                if (other !== dropdown && other.classList.contains('is-open')) {
+                    other.classList.remove('is-open');
+                    other.querySelector('.nav-dropdown-trigger')?.setAttribute('aria-expanded', 'false');
+                }
+            });
+        });
+        dropdown.addEventListener('keydown', event => {
+            if (event.key === 'Escape') {
+                dropdown.classList.remove('is-open');
+                trigger?.setAttribute('aria-expanded', 'false');
+                trigger?.focus();
+            }
+        });
+    });
+    document.addEventListener('click', event => {
+        if (!event.target.closest('.nav-dropdown')) {
+            navDropdowns.forEach(dropdown => {
+                dropdown.classList.remove('is-open');
+                dropdown.querySelector('.nav-dropdown-trigger')?.setAttribute('aria-expanded', 'false');
+            });
+        }
+    });
+    document.querySelectorAll('.nav-dropdown-menu a').forEach(link => {
+        link.addEventListener('click', () => {
+            const dropdown = link.closest('.nav-dropdown');
+            dropdown?.classList.remove('is-open');
+            dropdown?.querySelector('.nav-dropdown-trigger')?.setAttribute('aria-expanded', 'false');
+        });
     });
 
     document.querySelectorAll('[data-language]').forEach(button => {

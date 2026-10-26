@@ -28,6 +28,43 @@ body {
     background-size: 28px 28px;
 }
 
+/* =============================================================================
+   ЗАЩИТА ТЕКСТА ОТ КОПИРОВАНИЯ
+   Тексты на странице нельзя выделить и скопировать.
+   Поля ввода формы заказа остаются доступными для работы пользователя.
+   ============================================================================= */
+
+body,
+img,
+video,
+button,
+svg {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+}
+
+input,
+textarea,
+select {
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+    user-select: text;
+}
+
+::selection {
+    background: transparent;
+    color: inherit;
+}
+
+::-moz-selection {
+    background: transparent;
+    color: inherit;
+}
+
 .container {
     max-width: 1400px;
     margin: 0 auto;
@@ -1020,19 +1057,29 @@ textarea {
     white-space: nowrap;
 }
 
-.logo-word {
-    color: #fff;
-    -webkit-text-stroke: 1.5px #000;
-    paint-order: stroke fill;
-    text-shadow: 2px 2px 0 #000, -1px -1px 0 #000;
+/* ---------------------------------------------------------------------------
+   Logo "SpaceY": ONE solid inline-SVG element built from word_Y.svg.
+   The Y glyph keeps its exact original path/geometry; "Space" was generated
+   with the very same style attributes as word_Y.svg:
+     font-size: 21.3333px; font-family: Arial; fill:#ffffff;
+     stroke:#000000; stroke-width:4.84016; paint-order: stroke fill markers
+   => identical edge-contour thickness for both words, regular inter-word
+   space (advance of "Space" = 76.85u + 4.85u gap = Y at x=81.7).
+--------------------------------------------------------------------------- */
+.logo-spacey {
+    display: block;
+    height: clamp(19px, 1.7vw, 25px);
+    width: auto;
+    overflow: visible;
 }
 
-.logo-y {
-    display: block;
-    width: 0.9em;
-    height: 1em;
-    margin-left: 0.02em;
-    object-fit: contain;
+.logo-spacey-g {
+    font-size: 21.3333px;
+    font-family: Arial, Helvetica, sans-serif;
+    fill: #ffffff;
+    stroke: #000000;
+    stroke-width: 4.84016;
+    paint-order: stroke fill markers;
 }
 
 .language-menu {
@@ -1066,17 +1113,143 @@ textarea {
 
 .language-menu-options {
     position: absolute;
-    top: calc(100% + 1px);
-    left: 0;
+    top: calc(100% + 12px);
+    right: 0;
+    left: auto;
     display: grid;
-    width: 100%;
+    min-width: 170px;
     padding: 5px 0;
-    border: 1px solid rgba(255, 255, 255, 0.65);
-    background: rgba(3, 5, 10, 0.94);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    /* SpaceX-style glass background, same as the nav dropdowns */
+    background: rgba(0, 0, 0, 0.5);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 18px 46px rgba(0, 0, 0, 0.35);
     opacity: 0;
     visibility: hidden;
     transform: translateY(-6px);
     transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s ease;
+}
+
+/* =============================================================================
+   TOPBAR DROPDOWN MENUS (SpaceX-style)
+   ============================================================================= */
+
+.topbar-nav {
+    gap: clamp(12px, 2vw, 30px);
+    margin-left: auto;
+}
+
+.nav-dropdown {
+    position: relative;
+}
+
+.nav-dropdown-trigger {
+    padding: 10px 4px;
+    border: 0;
+    background: transparent;
+    color: #fff;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: color 0.2s ease, opacity 0.2s ease;
+}
+
+.nav-dropdown-trigger:hover,
+.nav-dropdown:focus-within .nav-dropdown-trigger,
+.nav-dropdown.is-open .nav-dropdown-trigger {
+    opacity: 0.78;
+}
+
+.nav-dropdown-trigger::after {
+    content: '+';
+    margin-left: 8px;
+    font-size: 13px;
+    vertical-align: 1px;
+}
+
+.nav-dropdown.is-open .nav-dropdown-trigger::after {
+    content: '\2212';
+}
+
+/* Dropdown panel — background copied from the SpaceX style: fully
+   semi-transparent with a blurred backdrop behind it. */
+.nav-dropdown-menu {
+    position: absolute;
+    top: calc(100% + 12px);
+    left: 50%;
+    display: grid;
+    min-width: 230px;
+    padding: 8px 0;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    /* SpaceX-style glass background: semi-transparent + backdrop blur */
+    background: rgba(0, 0, 0, 0.5);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 18px 46px rgba(0, 0, 0, 0.35);
+    opacity: 0;
+    visibility: hidden;
+    transform: translate(-50%, -6px);
+    transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s ease;
+}
+
+/* Keep the panel inside the viewport near the screen edges (SpaceX behaviour). */
+.nav-dropdown:first-child .nav-dropdown-menu {
+    left: 0;
+    transform: translateY(-6px);
+}
+
+.nav-dropdown:last-child .nav-dropdown-menu {
+    left: auto;
+    right: 0;
+    transform: translateY(-6px);
+}
+
+.nav-dropdown:first-child:hover .nav-dropdown-menu,
+.nav-dropdown:first-child:focus-within .nav-dropdown-menu,
+.nav-dropdown:first-child.is-open .nav-dropdown-menu,
+.nav-dropdown:last-child:hover .nav-dropdown-menu,
+.nav-dropdown:last-child:focus-within .nav-dropdown-menu,
+.nav-dropdown:last-child.is-open .nav-dropdown-menu {
+    transform: translateY(0);
+}
+
+.nav-dropdown-menu::before {
+    position: absolute;
+    top: -12px;
+    left: 0;
+    width: 100%;
+    height: 12px;
+    content: '';
+}
+
+.nav-dropdown-menu a {
+    padding: 12px 18px;
+    color: rgba(255, 255, 255, 0.86);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-decoration: none;
+    text-transform: uppercase;
+    white-space: nowrap;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.nav-dropdown-menu a:hover,
+.nav-dropdown-menu a:focus-visible {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+}
+
+.nav-dropdown:hover .nav-dropdown-menu,
+.nav-dropdown:focus-within .nav-dropdown-menu,
+.nav-dropdown.is-open .nav-dropdown-menu {
+    opacity: 1;
+    visibility: visible;
+    transform: translate(-50%, 0);
 }
 
 .language-menu-options button {
@@ -1142,16 +1315,16 @@ textarea {
     width: 100%;
     min-height: 100%;
     align-items: flex-end;
-    justify-content: flex-end;
-    text-align: right;
+    justify-content: flex-start;
+    text-align: left;
 }
 
 .hero-launch .hero-copy {
     display: flex;
     width: min(100%, 900px);
     flex-direction: column;
-    align-items: flex-end;
-    padding: 100px 24px clamp(56px, 10vh, 112px);
+    align-items: flex-start;
+    padding: 100px 24px clamp(56px, 10vh, 112px) clamp(24px, 7vw, 120px);
 }
 
 .hero-eyebrow {
@@ -1195,9 +1368,14 @@ textarea {
         min-height: 38px;
     }
 
+    .topbar-nav {
+        display: none;
+    }
+
     .hero-launch .hero-copy {
         padding-top: 150px;
         padding-right: 0;
+        padding-left: 24px;
     }
 }
 

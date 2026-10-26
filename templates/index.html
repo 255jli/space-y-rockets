@@ -22,9 +22,34 @@
         <div class="container">
             <div class="header-content">
                 <div class="logo" aria-label="SpaceY">
-                    <span class="logo-word">Space</span>
-                    <img class="logo-y" src="{{ url_for('static', filename='css/word_Y.svg') }}" alt="">
+                    <!-- One solid word: "Space" is inline SVG generated from
+                         word_Y.svg (same font, same stroke-width, same paint-order) -->
+                    <svg class="logo-spacey" viewBox="-3 -2 167.4 34" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="SpaceY"><g class="logo-spacey-g"><text x="0" y="24">Space</text><text x="85.2" y="24">Y</text></g></svg>
                 </div>
+                <nav class="header-nav topbar-nav" aria-label="Main navigation">
+                    <div class="nav-dropdown">
+                        <button class="nav-dropdown-trigger" type="button" aria-haspopup="true" aria-expanded="false" data-i18n="navRockets">Vehicles</button>
+                        <div class="nav-dropdown-menu" role="menu">
+                            <a role="menuitem" href="#delivery" data-scroll-to-order data-i18n="catalogTitle">Choose a vehicle</a>
+                            <a role="menuitem" href="#delivery" data-scroll-to-order data-i18n="availableVehicles">Available for simulation:</a>
+                        </div>
+                    </div>
+                    <div class="nav-dropdown">
+                        <button class="nav-dropdown-trigger" type="button" aria-haspopup="true" aria-expanded="false" data-i18n="navNews">Missions</button>
+                        <div class="nav-dropdown-menu" role="menu">
+                            <a role="menuitem" href="#home" data-i18n="heroStep1">01 / SELECT VEHICLE</a>
+                            <a role="menuitem" href="#delivery" data-scroll-to-order data-i18n="heroStep2">02 / SET DESTINATION</a>
+                            <a role="menuitem" href="#delivery" data-scroll-to-order data-i18n="heroStep3">03 / FLIGHT SIMULATION</a>
+                        </div>
+                    </div>
+                    <div class="nav-dropdown">
+                        <button class="nav-dropdown-trigger" type="button" aria-haspopup="true" aria-expanded="false" data-i18n="navAbout">About</button>
+                        <div class="nav-dropdown-menu" role="menu">
+                            <a role="menuitem" href="#footer" data-i18n="missionComplete">SPACEY / MISSION COMPLETE</a>
+                            <a role="menuitem" href="#footer" data-i18n="returnHome">Return to home</a>
+                        </div>
+                    </div>
+                </nav>
                 <div class="language-menu">
                     <button class="language-menu-trigger" type="button" aria-haspopup="true" aria-expanded="false">
                         Язык
