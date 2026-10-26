@@ -1,0 +1,9 @@
+Place your CC0 explosion sound here as:
+
+  explosion_stub.m4a
+
+The flight animation will play it automatically when the screen goes white
+(atmospheric entry / "camera burns in the clouds"). Until the file exists,
+the player fails silently and logs a console hint.
+
+Recommended: short impact / explosion SFX, mono or stereo, ~1–3 seconds.
