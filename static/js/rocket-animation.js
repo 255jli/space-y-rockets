@@ -2,10 +2,10 @@ const THREE = window.THREE;
 const ASSET_ROOT = '/static';
 const STATION_SCALE = 0.012;
 let STATION_PULL_SECONDS = 18;
-const FLIGHT_SECONDS = 23;
-let WHITEOUT_START = STATION_PULL_SECONDS + FLIGHT_SECONDS + 0.8;
-let BLACKOUT_START = WHITEOUT_START + 3.2;
-let END_CARD_START = BLACKOUT_START + 1.1;
+const FLIGHT_SECONDS = 22;
+let WHITEOUT_START = STATION_PULL_SECONDS + FLIGHT_SECONDS + 0.4;
+let BLACKOUT_START = WHITEOUT_START + 2.8;
+let END_CARD_START = BLACKOUT_START + 1.0;
 const STATION_PAYLOAD_LENGTH = 8;
 const ROCKET_LONGITUDINAL_AXIS = new THREE.Vector3(0, 1, 0);
 const ENGINE_POSITIONS = [
@@ -45,17 +45,20 @@ let resources = [];
 let activeContainer;
 let disposed = false;
 let rocketStartOrientation;
+let launchAudio = null;
+let explosionAudio = null;
+let explosionTriggered = false;
+let stationDriftVelocity = new THREE.Vector3(0, 0, 0);
 
-const START_DIRECTION = new THREE.Vector3(1, 0, 0);
-const PLANET_CENTER = new THREE.Vector3(0.35, 0, -8.4);
-const FLIGHT_END = new THREE.Vector3(0.35, 0, -11.9);
-const INITIAL_CAMERA_POSITION = new THREE.Vector3(-0.9, 0.38, -1.22);
-const INITIAL_CAMERA_TARGET = new THREE.Vector3(-0.65, 0, -0.06);
-const FINAL_CAMERA_POSITION = new THREE.Vector3(0.35, 0.7, -1.35);
+// Flight axis: toward Earth (negative Z from station toward PLANET_CENTER).
+const FLIGHT_FORWARD = new THREE.Vector3(0, 0, -1);
+const PLANET_CENTER = new THREE.Vector3(0.15, -0.35, -9.2);
+const INITIAL_CAMERA_POSITION = new THREE.Vector3(-1.15, 0.55, -1.45);
+const INITIAL_CAMERA_TARGET = new THREE.Vector3(-0.2, 0.05, -0.15);
 const rocketOrientation = new THREE.Quaternion();
 const targetOrientation = new THREE.Quaternion();
 const tempVector = new THREE.Vector3();
-const rocketDirection = new THREE.Vector3(1, 0, 0);
+const rocketDirection = new THREE.Vector3(0, 0, -1);
 
 const LOCALIZED_LOADING = {
     en: { loading: 'Preparing flight…', failed: 'The flight scene could not be loaded.' },
@@ -98,7 +101,6 @@ function loadTexture(loader, path, colorTexture = true) {
     });
 }
 
-// Wait for every model and texture before creating the scene or starting its clock.
 async function preloadAssets() {
     const manager = new THREE.LoadingManager();
     manager.onProgress = (_url, loaded, total) => setLoadingProgress(loaded, total);
@@ -119,12 +121,12 @@ async function preloadAssets() {
 }
 
 function makeStars() {
-    const count = 1200;
+    const count = 1400;
     const positions = new Float32Array(count * 3);
     for (let index = 0; index < count; index += 1) {
         const angle = Math.random() * Math.PI * 2;
         const vertical = Math.random() * 2 - 1;
-        const radius = 28 + Math.random() * 38;
+        const radius = 30 + Math.random() * 40;
         const ring = Math.sqrt(1 - vertical * vertical) * radius;
         positions[index * 3] = Math.cos(angle) * ring;
         positions[index * 3 + 1] = vertical * radius;
@@ -136,9 +138,9 @@ function makeStars() {
         geometry,
         new THREE.PointsMaterial({
             color: 0xdce8ff,
-            size: 0.055,
+            size: 0.05,
             transparent: true,
-            opacity: 0.78,
+            opacity: 0.8,
             sizeAttenuation: true,
             depthWrite: false
         })
@@ -148,7 +150,8 @@ function makeStars() {
 function makePlanet(earthTexture, cloudTexture, moonTexture, latitude, longitude) {
     planet = new THREE.Group();
     planet.position.copy(PLANET_CENTER);
-    planet.scale.setScalar(1.75);
+    // Fixed scale for entire scene — Earth does not shrink or grow at the end.
+    planet.scale.setScalar(1.85);
     scene.add(planet);
 
     earthMaterial = new THREE.MeshStandardMaterial({
@@ -161,6 +164,7 @@ function makePlanet(earthTexture, cloudTexture, moonTexture, latitude, longitude
         new THREE.SphereGeometry(1, 96, 64),
         earthMaterial
     );
+    // Earth body stays static; only clouds rotate.
     planet.add(earth);
 
     clouds = new THREE.Mesh(
@@ -168,16 +172,16 @@ function makePlanet(earthTexture, cloudTexture, moonTexture, latitude, longitude
         new THREE.MeshLambertMaterial({
             map: cloudTexture,
             transparent: true,
-            opacity: 0.2,
+            opacity: 0.28,
             depthWrite: false
         })
     );
     planet.add(clouds);
 
     const atmosphere = new THREE.Mesh(
-        new THREE.SphereGeometry(1.035, 64, 48),
+        new THREE.SphereGeometry(1.04, 64, 48),
         new THREE.ShaderMaterial({
-            uniforms: { intensity: { value: 0.25 } },
+            uniforms: { intensity: { value: 0.28 } },
             vertexShader: `
                 varying vec3 vNormal;
                 varying vec3 vViewDirection;
@@ -195,7 +199,7 @@ function makePlanet(earthTexture, cloudTexture, moonTexture, latitude, longitude
                 void main() {
                     float rim = pow(1.0 - max(dot(normalize(vNormal), normalize(vViewDirection)), 0.0), 2.2);
                     float alpha = smoothstep(0.04, 0.9, rim) * intensity;
-                    gl_FragColor = vec4(0.2, 0.55, 1.0, alpha);
+                    gl_FragColor = vec4(0.25, 0.55, 1.0, alpha);
                 }
             `,
             side: THREE.BackSide,
@@ -217,15 +221,16 @@ function makePlanet(earthTexture, cloudTexture, moonTexture, latitude, longitude
     ).normalize();
     planet.quaternion.setFromUnitVectors(targetSurface, new THREE.Vector3(0, 0, 1));
 
+    // Moon in the background behind / above the station.
     moon = new THREE.Mesh(
-        new THREE.SphereGeometry(0.13, 40, 28),
+        new THREE.SphereGeometry(0.22, 48, 32),
         new THREE.MeshStandardMaterial({
             map: moonTexture,
             roughness: 1,
             metalness: 0
         })
     );
-    moon.position.set(2.4, 1.7, -13.5);
+    moon.position.set(3.6, 2.4, 4.5);
     scene.add(moon);
 }
 
@@ -242,8 +247,9 @@ function addStation(stationGltf) {
     stationRoot.updateMatrixWorld(true);
     dummyRocket.updateWorldMatrix(true, false);
     INITIAL_CAMERA_TARGET.copy(dummyRocket.getWorldPosition(new THREE.Vector3()));
+    // Camera sits farther so the extraction process is readable and the rocket looks small.
     INITIAL_CAMERA_POSITION.copy(INITIAL_CAMERA_TARGET)
-        .add(new THREE.Vector3(-0.25, 0.38, -1.18));
+        .add(new THREE.Vector3(-0.55, 0.62, -1.85));
     camera.position.copy(INITIAL_CAMERA_POSITION);
     camera.lookAt(INITIAL_CAMERA_TARGET);
 
@@ -251,7 +257,8 @@ function addStation(stationGltf) {
     stationAction = stationMixer.clipAction(stationGltf.animations[0]);
     stationAction.setLoop(THREE.LoopOnce, 1);
     stationAction.clampWhenFinished = true;
-    stationMixer.timeScale = 0.9;
+    stationMixer.timeScale = 0.85;
+
     const dummyPositionTrack = stationAction.getClip().tracks.find(track =>
         track.name.includes('dummy_rocket') && track.name.endsWith('.position')
     );
@@ -273,9 +280,9 @@ function addStation(stationGltf) {
         }
     }
     STATION_PULL_SECONDS = extractionTime / stationMixer.timeScale;
-    WHITEOUT_START = STATION_PULL_SECONDS + FLIGHT_SECONDS + 0.8;
-    BLACKOUT_START = WHITEOUT_START + 3.2;
-    END_CARD_START = BLACKOUT_START + 1.1;
+    WHITEOUT_START = STATION_PULL_SECONDS + FLIGHT_SECONDS + 0.4;
+    BLACKOUT_START = WHITEOUT_START + 2.8;
+    END_CARD_START = BLACKOUT_START + 1.0;
 }
 
 function makeCoreGeometry(rows = 96, segments = 24) {
@@ -455,6 +462,7 @@ function addRocket(rocketGltf) {
     rocketRoot = new THREE.Group();
     rocketModel.position.sub(rocketCenter);
     rocketRoot.add(rocketModel);
+    rocketRoot.visible = false;
     scene.add(rocketRoot);
 
     const flameAssets = makeFlameMaterials();
@@ -507,9 +515,9 @@ function addRocket(rocketGltf) {
 function createRenderer(container) {
     scene = new THREE.Scene();
     scene.background = new THREE.Color(0x02040a);
-    scene.fog = new THREE.FogExp2(0x02040a, 0.001);
+    scene.fog = new THREE.FogExp2(0x02040a, 0.0008);
 
-    camera = new THREE.PerspectiveCamera(46, window.innerWidth / window.innerHeight, 0.02, 100);
+    camera = new THREE.PerspectiveCamera(46, window.innerWidth / window.innerHeight, 0.02, 120);
     camera.position.copy(INITIAL_CAMERA_POSITION);
     camera.lookAt(INITIAL_CAMERA_TARGET);
 
@@ -533,32 +541,90 @@ function createRenderer(container) {
     makeStars();
 }
 
+function setupAudio() {
+    // Quiet ambient launch bed for the whole flight.
+    launchAudio = new Audio(`${ASSET_ROOT}/media/launch/crs34_launch_audio.m4a`);
+    launchAudio.loop = true;
+    launchAudio.volume = 0.22;
+    launchAudio.preload = 'auto';
+
+    // STUB: user will replace this path with a CC0 explosion SFX.
+    // File may not exist yet — we fail silently.
+    explosionAudio = new Audio(`${ASSET_ROOT}/media/launch/explosion_stub.m4a`);
+    explosionAudio.loop = false;
+    explosionAudio.volume = 0.85;
+    explosionAudio.preload = 'auto';
+}
+
+function startLaunchAudio() {
+    if (!launchAudio) return;
+    const play = launchAudio.play();
+    if (play && typeof play.catch === 'function') {
+        play.catch(() => {
+            // Autoplay may be blocked until a user gesture; already launched via click.
+        });
+    }
+}
+
+function stopLaunchAudio() {
+    if (!launchAudio) return;
+    try {
+        launchAudio.pause();
+        launchAudio.currentTime = 0;
+    } catch (_) { /* noop */ }
+}
+
+function triggerExplosionStub() {
+    if (explosionTriggered) return;
+    explosionTriggered = true;
+    stopLaunchAudio();
+    // Placeholder for the CC0 explosion the user will drop in later.
+    if (explosionAudio) {
+        const play = explosionAudio.play();
+        if (play && typeof play.catch === 'function') {
+            play.catch(() => {
+                // Expected until explosion_stub.m4a is added.
+                console.info('[SpaceY] explosion_stub.m4a missing — drop your CC0 SFX at static/media/launch/explosion_stub.m4a');
+            });
+        }
+    }
+}
+
 function swapToRocket() {
     if (swappedRocket) return;
     stationRoot.updateMatrixWorld(true);
     dummyRocket.updateWorldMatrix(true, false);
     const dummyPosition = dummyRocket.getWorldPosition(new THREE.Vector3());
 
-    const stationOrientation = new THREE.Quaternion().setFromUnitVectors(
+    // Rocket is already pointed toward Earth (nose along -Z / flight forward).
+    const earthOrientation = new THREE.Quaternion().setFromUnitVectors(
         ROCKET_LONGITUDINAL_AXIS,
-        START_DIRECTION
+        FLIGHT_FORWARD
     );
     const initialScale = STATION_SCALE * (STATION_PAYLOAD_LENGTH / rocketLength);
     rocketRoot.position.copy(dummyPosition);
-    rocketRoot.quaternion.copy(stationOrientation);
-    rocketStartOrientation = stationOrientation.clone();
+    rocketRoot.quaternion.copy(earthOrientation);
+    rocketStartOrientation = earthOrientation.clone();
     rocketRoot.scale.setScalar(initialScale);
+    rocketDirection.copy(FLIGHT_FORWARD);
+
+    // Straight dive toward Earth; slight lateral curve so the station stays visible beside the path.
+    const start = dummyPosition.clone();
+    const end = PLANET_CENTER.clone().add(new THREE.Vector3(0.05, 0.15, 1.35));
     flightCurve = new THREE.CubicBezierCurve3(
-        dummyPosition.clone(),
-        dummyPosition.clone().add(new THREE.Vector3(4.5, 0, 0)),
-        FLIGHT_END.clone().add(new THREE.Vector3(0, 0, 3.6)),
-        FLIGHT_END.clone()
+        start,
+        start.clone().add(new THREE.Vector3(0.4, -0.1, -2.8)),
+        end.clone().add(new THREE.Vector3(-0.2, 0.2, 2.0)),
+        end
     );
 
-    // Keep the replacement centered on the animated dummy before hiding it.
+    // Station drifts across the frame (perpendicular to the rocket path).
+    stationDriftVelocity.set(0.035, 0.004, 0.012);
+
     dummyRocket.visible = false;
     rocketRoot.visible = true;
     swappedRocket = true;
+    startLaunchAudio();
 }
 
 function updateRocket(elapsed, flightProgress, delta) {
@@ -567,60 +633,87 @@ function updateRocket(elapsed, flightProgress, delta) {
         return;
     }
 
-    const startPosition = rocketRoot.userData.flightStart ||
-        (rocketRoot.userData.flightStart = rocketRoot.position.clone());
     const progress = THREE.MathUtils.clamp(flightProgress, 0, 1);
-    const travel = progress * (0.2 + 0.8 * progress);
+    // Ease-in so acceleration reads after engines light.
+    const travel = progress * progress * (3 - 2 * progress);
     rocketRoot.position.copy(flightCurve.getPoint(travel));
     rocketDirection.copy(flightCurve.getTangent(travel)).normalize();
+
+    // Keep nose locked toward the travel direction (already Earth-facing).
     targetOrientation.setFromUnitVectors(ROCKET_LONGITUDINAL_AXIS, rocketDirection);
-    const orientationProgress = THREE.MathUtils.smoothstep(progress, 0.01, 0.3);
-    rocketOrientation.slerpQuaternions(rocketStartOrientation, targetOrientation, orientationProgress);
-    rocketRoot.quaternion.copy(rocketOrientation);
+    rocketRoot.quaternion.slerp(targetOrientation, 0.12);
 
     const initialScale = STATION_SCALE * (STATION_PAYLOAD_LENGTH / rocketLength);
     rocketRoot.scale.setScalar(initialScale);
 
-    const engineThrust = THREE.MathUtils.smoothstep(elapsed, STATION_PULL_SECONDS + 0.15, STATION_PULL_SECONDS + 0.85) *
-        (1 - THREE.MathUtils.smoothstep(progress, 0.84, 1));
+    // Engines on for most of the dive; fade near impact whiteout.
+    const engineThrust = THREE.MathUtils.smoothstep(elapsed, STATION_PULL_SECONDS + 0.1, STATION_PULL_SECONDS + 0.7) *
+        (1 - THREE.MathUtils.smoothstep(progress, 0.88, 1));
     sharedFlameTime.value += delta;
     flames.forEach(flame => {
         flame.visible = engineThrust > 0.01;
     });
 
-    const heat = THREE.MathUtils.smoothstep(progress, 0.57, 0.76) *
-        (1 - THREE.MathUtils.smoothstep(progress, 0.91, 1));
+    // Atmospheric heating as the rocket nears Earth.
+    const heat = THREE.MathUtils.smoothstep(progress, 0.55, 0.82) *
+        (1 - THREE.MathUtils.smoothstep(progress, 0.94, 1));
     heatSpot.visible = heat > 0.01;
     heatSpot.material.uniforms.heat.value = heat;
-    heatSpot.scale.setScalar(0.7 + heat * 0.7);
-    if (progress >= 0.985) rocketRoot.visible = false;
+    heatSpot.scale.setScalar(0.7 + heat * 1.1);
+
+    if (progress >= 0.99) rocketRoot.visible = false;
+
+    // Station keeps drifting across the view while the rocket flies "along" it.
+    if (stationRoot) {
+        stationRoot.position.addScaledVector(stationDriftVelocity, delta * 60);
+    }
 
     if (planet) {
-        const planetScale = THREE.MathUtils.lerp(1.75, 3.45, THREE.MathUtils.smoothstep(progress, 0.04, 0.94));
-        planet.scale.setScalar(planetScale);
-        clouds.rotation.y += delta * 0.008;
-        atmosphereMaterial.uniforms.intensity.value = 0.2 + progress * 0.8;
-        scene.fog.density = 0.001 + THREE.MathUtils.smoothstep(progress, 0.48, 0.96) * 0.012;
+        // Earth fixed in scale; clouds accelerate as we approach.
+        const cloudSpeed = 0.01 + progress * progress * 0.55;
+        clouds.rotation.y += delta * cloudSpeed;
+        atmosphereMaterial.uniforms.intensity.value = 0.28 + progress * 1.1;
+
+        // Haze builds toward atmospheric entry (whiteout).
+        const haze = THREE.MathUtils.smoothstep(progress, 0.4, 0.98);
+        scene.fog.density = 0.0008 + haze * 0.045;
+        scene.fog.color.setRGB(
+            THREE.MathUtils.lerp(0.008, 0.85, haze * haze),
+            THREE.MathUtils.lerp(0.016, 0.88, haze * haze),
+            THREE.MathUtils.lerp(0.04, 0.9, haze * haze)
+        );
+        if (renderer) {
+            renderer.toneMappingExposure = 1.1 + haze * 1.6;
+        }
     }
 }
 
 function updateCamera(elapsed, flightProgress) {
-    if (elapsed < STATION_PULL_SECONDS + 0.3) {
-        camera.position.lerp(INITIAL_CAMERA_POSITION, 0.025);
+    if (!swappedRocket || elapsed < STATION_PULL_SECONDS + 0.15) {
+        // During extraction: hold a distant observing angle so the process is visible.
+        camera.position.lerp(INITIAL_CAMERA_POSITION, 0.04);
         camera.lookAt(INITIAL_CAMERA_TARGET);
         return;
     }
 
-    const follow = THREE.MathUtils.smoothstep(elapsed, STATION_PULL_SECONDS + 0.3, STATION_PULL_SECONDS + 2.3);
-    const chasePosition = rocketRoot.position.clone().addScaledVector(rocketDirection, -1.55);
-    chasePosition.y += 0.45;
-    const releaseCamera = THREE.MathUtils.smoothstep(flightProgress, 0.76, 0.93);
-    const desiredPosition = chasePosition.lerp(FINAL_CAMERA_POSITION, releaseCamera);
-    camera.position.lerp(desiredPosition, 0.035 + follow * 0.04);
-    const planetLook = PLANET_CENTER.clone();
-    const chaseLook = rocketRoot.position.clone().addScaledVector(rocketDirection, 1.4);
-    camera.lookAt(chaseLook.lerp(planetLook, releaseCamera));
-    camera.fov = THREE.MathUtils.lerp(46, 52, THREE.MathUtils.smoothstep(flightProgress, 0, 0.78));
+    // Camera hard-mounted to the rocket: slightly behind and above the nose.
+    const follow = THREE.MathUtils.smoothstep(elapsed, STATION_PULL_SECONDS + 0.15, STATION_PULL_SECONDS + 1.4);
+    const back = 1.35 - flightProgress * 0.25;
+    const up = 0.38 - flightProgress * 0.08;
+    const mount = rocketRoot.position.clone()
+        .addScaledVector(rocketDirection, -back)
+        .add(new THREE.Vector3(0, up, 0));
+
+    // Blend from extraction camera into rocket-mounted view.
+    camera.position.lerp(mount, 0.06 + follow * 0.12);
+
+    const lookAhead = rocketRoot.position.clone().addScaledVector(rocketDirection, 2.2);
+    // Bias look slightly toward Earth so the planet fills the frame over time.
+    const earthBias = THREE.MathUtils.smoothstep(flightProgress, 0.15, 0.85);
+    lookAhead.lerp(PLANET_CENTER, earthBias * 0.35);
+    camera.lookAt(lookAhead);
+
+    camera.fov = THREE.MathUtils.lerp(46, 58, THREE.MathUtils.smoothstep(flightProgress, 0.2, 0.9));
     camera.updateProjectionMatrix();
 }
 
@@ -628,11 +721,18 @@ function updateOverlays(elapsed) {
     const whiteout = activeContainer.querySelector('.cinema-whiteout');
     const blackout = activeContainer.querySelector('.cinema-blackout');
     const endCard = activeContainer.querySelector('.cinema-end-card');
-    const white = THREE.MathUtils.smoothstep(elapsed, WHITEOUT_START, WHITEOUT_START + 2.3);
-    whiteout.style.opacity = String(white);
-    const black = THREE.MathUtils.smoothstep(elapsed, BLACKOUT_START, BLACKOUT_START + 1.1);
-    blackout.style.opacity = String(black);
-    if (elapsed >= END_CARD_START) endCard.classList.add('is-visible');
+
+    const white = THREE.MathUtils.smoothstep(elapsed, WHITEOUT_START, WHITEOUT_START + 2.2);
+    if (whiteout) whiteout.style.opacity = String(white);
+
+    if (elapsed >= WHITEOUT_START + 0.35) {
+        triggerExplosionStub();
+    }
+
+    const black = THREE.MathUtils.smoothstep(elapsed, BLACKOUT_START, BLACKOUT_START + 1.0);
+    if (blackout) blackout.style.opacity = String(black);
+
+    if (elapsed >= END_CARD_START) endCard?.classList.add('is-visible');
 }
 
 function renderFrame() {
@@ -653,7 +753,7 @@ function renderFrame() {
     updateOverlays(elapsed);
     renderer.render(scene, camera);
 
-    if (elapsed < END_CARD_START + 2) {
+    if (elapsed < END_CARD_START + 2.5) {
         animationFrame = requestAnimationFrame(renderFrame);
     }
 }
@@ -667,39 +767,39 @@ function resize() {
 }
 
 function disposeObject(object) {
-    if (!object) return;
     object.traverse(child => {
-        child.geometry?.dispose();
-        if (Array.isArray(child.material)) {
-            child.material.forEach(material => material.dispose());
-        } else {
-            child.material?.dispose();
+        if (child.geometry) child.geometry.dispose();
+        if (child.material) {
+            if (Array.isArray(child.material)) {
+                child.material.forEach(material => material.dispose());
+            } else {
+                child.material.dispose();
+            }
         }
     });
 }
 
-export async function initRocketAnimation(containerId) {
-    if (!THREE || !THREE.GLTFLoader) {
-        throw new Error('Three.js and GLTFLoader must load before rocket-animation.js');
-    }
+async function initRocketAnimation(containerId) {
+    disposed = false;
+    swappedRocket = false;
+    explosionTriggered = false;
+    stationDriftVelocity.set(0, 0, 0);
 
     const container = document.getElementById(containerId);
-    if (!container) throw new Error(`Animation container not found: ${containerId}`);
-
-    stopRocketAnimation();
+    if (!container) throw new Error(`Container #${containerId} not found`);
     activeContainer = container;
     container.style.display = 'block';
     document.body.style.overflow = 'hidden';
-    disposed = false;
-    swappedRocket = false;
-    flames = [];
-    resources = [];
-    container.querySelector('.cinema-loading').classList.add('is-visible');
-    container.querySelector('.cinema-loading-error').hidden = true;
-    container.querySelector('.cinema-loading-return').hidden = true;
-    container.querySelector('.cinema-whiteout').style.opacity = '0';
-    container.querySelector('.cinema-blackout').style.opacity = '0';
-    container.querySelector('.cinema-end-card').classList.remove('is-visible');
+
+    const endCard = container.querySelector('.cinema-end-card');
+    endCard?.classList.remove('is-visible');
+    const whiteout = container.querySelector('.cinema-whiteout');
+    const blackout = container.querySelector('.cinema-blackout');
+    if (whiteout) whiteout.style.opacity = '0';
+    if (blackout) blackout.style.opacity = '0';
+
+    const loading = container.querySelector('.cinema-loading');
+    loading?.classList.add('is-visible');
     setLoadingProgress(0, 1);
 
     const latitude = Number(container.dataset.latitude) || 0;
@@ -707,14 +807,14 @@ export async function initRocketAnimation(containerId) {
     const assets = await preloadAssets();
 
     createRenderer(container);
+    setupAudio();
     addStation(assets.stationGltf);
     addRocket(assets.rocketGltf);
     makePlanet(assets.earthTexture, assets.cloudTexture, assets.moonTexture, latitude, longitude);
     stationAction.reset();
     stationAction.play();
 
-    const loader = container.querySelector('.cinema-loading');
-    loader.classList.remove('is-visible');
+    loading?.classList.remove('is-visible');
     clock = new THREE.Clock();
     resizeHandler = resize;
     window.addEventListener('resize', resizeHandler);
@@ -728,6 +828,14 @@ export function stopRocketAnimation() {
     animationFrame = 0;
     if (resizeHandler) window.removeEventListener('resize', resizeHandler);
     resizeHandler = null;
+
+    stopLaunchAudio();
+    if (explosionAudio) {
+        try { explosionAudio.pause(); } catch (_) { /* noop */ }
+    }
+    launchAudio = null;
+    explosionAudio = null;
+    explosionTriggered = false;
 
     if (scene) {
         disposeObject(scene);
