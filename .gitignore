@@ -4,6 +4,14 @@ __pycache__/
 *.pyc
 *.pyo
 
+# Blender
+blender-4.4.3-linux-x64/
+blender-4.4.3-linux-x64.tar.xz
+public/
+*.blend
+*.blend1
+
+
 # Editor / OS
 .vscode/
 .DS_Store

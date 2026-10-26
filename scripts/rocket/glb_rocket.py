@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
-"""Параметрический 3D-макет Falcon 9 с экспортом GLB/GLTF.
+"""Параметрический 3D-макет ракеты с экспортом GLB/GLTF.
 
 Зависимости:
-    pip install trimesh numpy
+    pip install trimesh numpy pillow
 
 Опциональная проверка пересечений:
     pip install python-fcl
 
 Примеры:
-    python falcon_model.py --out falcon9.glb
-    python falcon_model.py --out falcon9.glb --sections 128
-    python falcon_model.py --out falcon9.glb --check
+    python glb_rocket.py --out rocket.glb
+    python glb_rocket.py --out rocket.glb --sections 128
+    python glb_rocket.py --out rocket.glb --check
 """
 
 from __future__ import annotations
@@ -30,6 +30,7 @@ def curved_decal(path, radius, z0, z1, a0, a1, nu=64, nv=8):
     img = Image.open(path).convert("RGBA")
     mat = trimesh.visual.material.PBRMaterial(
         name="decal", baseColorTexture=img,
+        metallicFactor=0.0, roughnessFactor=0.8,
         alphaMode="BLEND", doubleSided=True,
     )
     verts, uvs, faces = [], [], []
@@ -52,13 +53,19 @@ def curved_decal(path, radius, z0, z1, a0, a1, nu=64, nv=8):
 
 def add_logo(scene, path, radius, z_center, length=6.0, angle=0.0):
     p = Path(path)
+    if not p.is_absolute():
+        script_relative_path = Path(__file__).resolve().parent / p
+        if script_relative_path.is_file():
+            p = script_relative_path
+
     if not p.exists():
         print(f"Предупреждение: {path} не найден, декаль пропущена.")
         return
-    w, h = Image.open(p).size
+    with Image.open(p) as image:
+        w, h = image.size
     width = length / (w / h)           # поперечный размер по аспекту картинки
     arc = min(math.radians(120), width / radius)
-    decal = curved_decal(path, radius + 0.02,
+    decal = curved_decal(p, radius + 0.02,
                          z_center - length / 2, z_center + length / 2,
                          angle - arc / 2, angle + arc / 2, nu=12, nv=64)
     add_mesh(scene, decal, "stage1_logo")
@@ -92,12 +99,20 @@ COLORS = {
     "tiles": [0.09, 0.09, 0.10, 1.0],
 }
 
+MATERIAL_PROPERTIES = {
+    "white": {"metallicFactor": 0.08, "roughnessFactor": 0.48},
+    "black": {"metallicFactor": 0.10, "roughnessFactor": 0.78},
+    "steel": {"metallicFactor": 0.72, "roughnessFactor": 0.30},
+    "dark": {"metallicFactor": 0.35, "roughnessFactor": 0.56},
+    "tiles": {"metallicFactor": 0.02, "roughnessFactor": 0.84},
+}
+
 
 # ---------------------------------------------------------------------------
 # Вспомогательные функции для цвета и размещения геометрии
 # ---------------------------------------------------------------------------
 def paint(mesh: trimesh.Trimesh, color_name: str) -> trimesh.Trimesh:
-    """Назначает цвет вершинам, пригодный для экспорта в GLB/GLTF."""
+    """Назначает цвет и свойства PBR-материала для экспорта в GLB/GLTF."""
     if color_name not in COLORS:
         raise KeyError(f"Неизвестный материал: {color_name}")
 
@@ -105,7 +120,13 @@ def paint(mesh: trimesh.Trimesh, color_name: str) -> trimesh.Trimesh:
         np.asarray(COLORS[color_name], dtype=np.float64) * 255.0
     ).clip(0, 255).astype(np.uint8)
 
-    mesh.visual.vertex_colors = np.tile(rgba, (len(mesh.vertices), 1))
+    mesh.visual = trimesh.visual.TextureVisuals(
+        material=trimesh.visual.material.PBRMaterial(
+            name=color_name,
+            baseColorFactor=rgba.tolist(),
+            **MATERIAL_PROPERTIES[color_name],
+        )
+    )
     return mesh
 
 
@@ -517,12 +538,12 @@ def add_grid_fins(
         )
 
 
-def make_falcon9(
+def make_rocket(
     sections: int = 96,
     details: bool = True,
-    grid_fins: bool = True,
+    grid_fins: bool = False,
 ) -> trimesh.Scene:
-    """Собирает визуальный макет ракеты в одной сцене."""
+    """Собирает визуальный макет ракеты; решётчатые стабилизаторы отключены."""
     if sections < 12:
         raise ValueError("sections должно быть не меньше 12.")
 
@@ -586,7 +607,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--out",
-        default="falcon9.glb",
+        default="rocket.glb",
         help="путь выходного файла .glb или .gltf",
     )
     parser.add_argument(
@@ -604,8 +625,8 @@ def main() -> None:
     parser.add_argument(
         "--grid-fins",
         choices=("on", "off"),
-        default="on",
-        help="включить или отключить решётчатые панели",
+        default="off",
+        help="решётчатые стабилизаторы (по умолчанию отключены)",
     )
     parser.add_argument(
         "--check",
@@ -623,7 +644,7 @@ def main() -> None:
     if extension not in (".glb", ".gltf"):
         parser.error("Файл должен иметь расширение .glb или .gltf.")
 
-    scene = make_falcon9(
+    scene = make_rocket(
         sections=args.sections,
         details=(args.details == "on"),
         grid_fins=(args.grid_fins == "on"),
