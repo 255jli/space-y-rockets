@@ -50,6 +50,19 @@
         <section id="cinemaEndCard" class="cinema-end-card" aria-labelledby="cinemaEndTitle">
             <p>SPACEY / MISSION COMPLETE</p>
             <h2 id="cinemaEndTitle">Want to run another simulation?</h2>
+            <p class="customer-counter-prompt">
+                Если вам понравилась доставка и вы довольны, вы можете нажать на счётчик столько раз, за скольких людей вы довольны.
+            </p>
+            <div class="customer-counter" aria-label="Счётчик довольных клиентов">
+                <p class="customer-counter-heading">У нас теперь (счётчик ниже)</p>
+                <button id="customerCounterButton" class="customer-counter-value" type="button" aria-label="Увеличить счётчик довольных клиентов" disabled>
+                    <span id="customerCounterValue" class="customer-counter-digits" aria-live="polite">…</span>
+                </button>
+                <p class="customer-counter-suffix">довольных клиентов</p>
+            </div>
+            <p class="customer-counter-proof">Да, это настоящий счётчик</p>
+            <p class="customer-counter-footnote">Ваш отзыв очень важен. Но абсолютно бесполезен</p>
+            <p id="customerCounterStatus" class="customer-counter-status" role="status" aria-live="polite"></p>
             <button class="btn btn-primary" type="button" data-return-home>Return</button>
         </section>
     </div>

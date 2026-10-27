@@ -15,6 +15,7 @@ const translations = {
         quantityIncrease: 'Increase quantity',
         destinationLabel: 'Landing coordinates',
         mapHint: 'Select a point on the map.',
+        fuelConsent: 'I agree that my satellite may be used as fuel in an emergency.',
         coordinatesLabel: 'TARGET COORDINATES',
         noLocation: 'No destination selected',
         mapAria: 'World map. Select a destination.',
@@ -32,6 +33,7 @@ const translations = {
         selectLocation: 'Please select a destination on the map.',
         selectRocket: 'Please select a vehicle first.',
         invalidQuantity: 'Choose a quantity between 1 and 10.',
+        acceptFuelUse: 'Please agree to the emergency fuel-use condition.',
         sceneError: 'The 3D scene could not start. Please check WebGL support in your browser.'
     },
     ru: {
@@ -48,6 +50,7 @@ const translations = {
         quantityIncrease: 'Увеличить количество',
         destinationLabel: 'Координаты доставки',
         mapHint: 'Выберите точку на карте.',
+        fuelConsent: 'Согласен: при аварии мой спутник может быть использован как топливо.',
         coordinatesLabel: 'КООРДИНАТЫ ЦЕЛИ',
         noLocation: 'Место доставки не выбрано',
         mapAria: 'Карта мира. Выберите место доставки.',
@@ -65,6 +68,7 @@ const translations = {
         selectLocation: 'Сначала выберите место доставки на карте.',
         selectRocket: 'Сначала выберите аппарат.',
         invalidQuantity: 'Укажите количество от 1 до 10.',
+        acceptFuelUse: 'Подтвердите согласие на использование спутника как топлива при аварии.',
         sceneError: 'Не удалось запустить 3D-сцену. Проверьте поддержку WebGL в браузере.'
     },
     zh: {
@@ -81,6 +85,7 @@ const translations = {
         quantityIncrease: '增加数量',
         destinationLabel: '投送坐标',
         mapHint: '在地图上选择位置。',
+        fuelConsent: '我同意在发生紧急情况时将我的卫星用作燃料。',
         coordinatesLabel: '目标坐标',
         noLocation: '尚未选择目的地',
         mapAria: '世界地图。选择目的地。',
@@ -98,6 +103,7 @@ const translations = {
         selectLocation: '请先在地图上选择目的地。',
         selectRocket: '请先选择航天器。',
         invalidQuantity: '请输入 1 至 10 之间的数量。',
+        acceptFuelUse: '请确认同意在紧急情况下将卫星用作燃料。',
         sceneError: '无法启动 3D 场景，请检查浏览器是否支持 WebGL。'
     }
 };

@@ -8,12 +8,13 @@ let BLACKOUT_START = WHITEOUT_START + 2.8;
 let END_CARD_START = BLACKOUT_START + 1.0;
 const STATION_PAYLOAD_LENGTH = 2.2;
 const EXTRACTION_HOLD_SECONDS = 0.8;
-const ROCKET_EXTRACTION_DISTANCE = STATION_SCALE * 5;
-const ROCKET_EXTRACTION_SECONDS = 4;
 const ROCKET_SURFACE_CLEARANCE = 0.42;
-const APPROACH_ANGLE = THREE.MathUtils.degToRad(20);
+const ROCKET_STATION_OFFSET = STATION_SCALE * 0.15;
 const CAMERA_STOP_PROGRESS = 0.88;
 const ROCKET_LONGITUDINAL_AXIS = new THREE.Vector3(0, 1, 0);
+const STATION_LONGITUDINAL_AXIS = new THREE.Vector3(0, 1, 0);
+const LANDING_SURFACE_NORMAL = new THREE.Vector3(0, 0, 1);
+const landingSurfaceNormal = new THREE.Vector3();
 const PLANET_UNIT_RADIUS = 1;
 const PLANET_WORLD_SCALE = 1.85;
 const PLANET_RADIUS = PLANET_UNIT_RADIUS * PLANET_WORLD_SCALE;
@@ -65,16 +66,23 @@ let resources = [];
 let activeContainer;
 let disposed = false;
 let launchAudio = null;
+let explosionAudio = null;
+let explosionGain = null;
+let explosionTriggered = false;
 let stationBayScale = 1;
+// Roll around longitudinal axis so SpaceY marking faces the camera during extraction.
+// Tune in ±π/4 steps if the decal is still edge-on.
+const ROCKET_LOGO_ROLL = Math.PI;
 
 const PLANET_CENTER = new THREE.Vector3(0.15, -0.35, -9.2);
 const INITIAL_CAMERA_POSITION = new THREE.Vector3(-1.15, 0.55, -1.45);
 const INITIAL_CAMERA_TARGET = new THREE.Vector3(-0.2, 0.05, -0.15);
 const targetOrientation = new THREE.Quaternion();
+const railDirection = new THREE.Vector3(0, 0, -1);
 const rocketDirection = new THREE.Vector3(0, 0, -1);
 const _dummyWorldPos = new THREE.Vector3();
-const _dummyWorldQuat = new THREE.Quaternion();
 const _toPlanet = new THREE.Vector3();
+const _logoRollQuat = new THREE.Quaternion();
 
 const LOCALIZED_LOADING = {
     en: { loading: 'Preparing flight…', failed: 'The flight scene could not be loaded.' },
@@ -195,6 +203,7 @@ function makePlanet(assets, latitude, longitude) {
         new THREE.SphereGeometry(PLANET_UNIT_RADIUS, 128, 96),
         earthMaterial
     );
+    earth.rotation.x = Math.PI;
     planet.add(earth);
 
     clouds = new THREE.Mesh(
@@ -206,6 +215,7 @@ function makePlanet(assets, latitude, longitude) {
             depthWrite: false
         })
     );
+    clouds.rotation.copy(earth.rotation);
     planet.add(clouds);
 
     const atmosphere = new THREE.Mesh(
@@ -254,7 +264,9 @@ function makePlanet(assets, latitude, longitude) {
         Math.sin(latitudeRadians),
         -Math.cos(latitudeRadians) * Math.sin(longitudeRadians)
     ).normalize();
-    planet.quaternion.setFromUnitVectors(targetSurface, new THREE.Vector3(0, 0, 1));
+    targetSurface.applyQuaternion(earth.quaternion);
+    planet.quaternion.setFromUnitVectors(targetSurface, LANDING_SURFACE_NORMAL);
+    landingSurfaceNormal.copy(targetSurface).applyQuaternion(planet.quaternion).normalize();
 
     moon = new THREE.Mesh(
         new THREE.SphereGeometry(0.28, 48, 32),
@@ -372,80 +384,74 @@ function addStation(stationGltf) {
 }
 
 function orientStationForFlight() {
-    for (let iteration = 0; iteration < 2; iteration += 1) {
-        stationRoot.updateMatrixWorld(true);
-        dummyRocket.updateWorldMatrix(true, false);
-        dummyRocket.getWorldPosition(_dummyWorldPos);
-        dummyRocket.getWorldQuaternion(_dummyWorldQuat);
-        const forward = ROCKET_LONGITUDINAL_AXIS.clone().applyQuaternion(_dummyWorldQuat).normalize();
-        const start = _dummyWorldPos.clone().addScaledVector(forward, ROCKET_EXTRACTION_DISTANCE);
-        const target = getFlightSurfacePoint(start);
-        const towardTarget = target.sub(start).normalize();
-        stationRoot.quaternion.premultiply(
-            new THREE.Quaternion().setFromUnitVectors(forward, towardTarget)
-        );
+    const stationHull = stationRoot.getObjectByName('hull_main');
+    const carriage = stationRoot.getObjectByName('claw_carriage');
+    const carriageTrack = mechanismAction.getClip().tracks.find(track =>
+        track.name.includes('claw_carriage') && track.name.endsWith('.position')
+    );
+    if (!stationHull || !carriage || !carriageTrack) {
+        throw new Error('station.glb is missing hull_main or animated claw_carriage');
     }
+
     stationRoot.updateMatrixWorld(true);
     dummyRocket.updateWorldMatrix(true, false);
-    INITIAL_CAMERA_TARGET.copy(dummyRocket.getWorldPosition(new THREE.Vector3()));
-    const extractionDirection = ROCKET_LONGITUDINAL_AXIS.clone()
-        .applyQuaternion(dummyRocket.getWorldQuaternion(new THREE.Quaternion()))
-        .normalize();
-    const cameraSide = new THREE.Vector3().crossVectors(extractionDirection, new THREE.Vector3(0, 1, 0));
+    const carriagePosition = carriage.position.clone();
+    const carriageInterpolant = carriageTrack.createInterpolant();
+    const carriageStart = new THREE.Vector3().fromArray(carriageInterpolant.evaluate(0));
+    const carriageEnd = new THREE.Vector3().fromArray(carriageInterpolant.evaluate(extractionClipTime));
+    const localRailDirection = carriageEnd.sub(carriageStart).normalize();
+    carriage.position.fromArray(carriageInterpolant.evaluate(extractionClipTime));
+
+    stationRoot.updateMatrixWorld(true);
+    dummyRocket.updateWorldMatrix(true, false);
+    dummyRocket.getWorldPosition(_dummyWorldPos);
+    const sourceRadius = _dummyWorldPos.distanceTo(PLANET_CENTER);
+
+    stationRoot.quaternion.premultiply(new THREE.Quaternion().setFromUnitVectors(
+        STATION_LONGITUDINAL_AXIS.clone()
+            .applyQuaternion(stationHull.quaternion)
+            .applyQuaternion(stationRoot.quaternion)
+            .normalize(),
+        landingSurfaceNormal.clone().negate()
+    ));
+    railDirection.copy(localRailDirection).applyQuaternion(stationRoot.quaternion).normalize();
+    stationRoot.updateMatrixWorld(true);
+    dummyRocket.updateWorldMatrix(true, false);
+    const extractedPosition = dummyRocket.getWorldPosition(new THREE.Vector3());
+    const desiredLaunchPosition = PLANET_CENTER.clone()
+        .addScaledVector(landingSurfaceNormal, sourceRadius);
+    stationRoot.position.add(desiredLaunchPosition.sub(extractedPosition));
+    stationRoot.updateMatrixWorld(true);
+    dummyRocket.updateWorldMatrix(true, false);
+    const alignedExtractedPosition = dummyRocket.getWorldPosition(new THREE.Vector3());
+    carriage.position.copy(carriagePosition);
+    stationRoot.updateMatrixWorld(true);
+    dummyRocket.updateWorldMatrix(true, false);
+    const initialDummyPosition = dummyRocket.getWorldPosition(new THREE.Vector3());
+    INITIAL_CAMERA_TARGET.copy(initialDummyPosition).add(alignedExtractedPosition).multiplyScalar(0.5);
+    const cameraSide = new THREE.Vector3().crossVectors(railDirection, new THREE.Vector3(0, 1, 0));
     if (cameraSide.lengthSq() < 1e-4) cameraSide.set(1, 0, 0);
     cameraSide.normalize();
-    INITIAL_CAMERA_TARGET.addScaledVector(extractionDirection, ROCKET_EXTRACTION_DISTANCE * 0.55);
-    const cameraDistance = Math.max(rocketLength * stationBayScale * 5, STATION_SCALE * 15);
+    const stationBounds = new THREE.Box3().setFromObject(stationRoot);
+    const boundsCenter = stationBounds.getCenter(new THREE.Vector3());
+    const boundsHalfSize = stationBounds.getSize(new THREE.Vector3()).multiplyScalar(0.5);
+    const projectedHalfSize =
+        Math.abs(cameraSide.x) * boundsHalfSize.x +
+        Math.abs(cameraSide.y) * boundsHalfSize.y +
+        Math.abs(cameraSide.z) * boundsHalfSize.z;
+    const boundsOffset = boundsCenter.sub(INITIAL_CAMERA_TARGET).dot(cameraSide);
+    const cameraDistance = Math.max(0, boundsOffset + projectedHalfSize) + STATION_SCALE * 10;
     INITIAL_CAMERA_POSITION.copy(INITIAL_CAMERA_TARGET)
-        .addScaledVector(cameraSide, cameraDistance)
-        .addScaledVector(extractionDirection, cameraDistance * 0.45)
-        .add(new THREE.Vector3(0, cameraDistance * 0.3, 0));
+        .addScaledVector(cameraSide, cameraDistance + STATION_SCALE * 2);
     camera.position.copy(INITIAL_CAMERA_POSITION);
     camera.fov = 30;
     camera.updateProjectionMatrix();
     camera.lookAt(INITIAL_CAMERA_TARGET);
 }
 
-function getFlightSurfacePoint(start) {
-    const targetNormal = new THREE.Vector3(0, 0, 1);
-    const sourceVector = start.clone().sub(PLANET_CENTER);
-    const sourceDistance = sourceVector.length();
+function getFlightSurfacePoint() {
     const targetRadius = PLANET_RADIUS + ROCKET_SURFACE_CLEARANCE;
-    if (sourceDistance <= targetRadius) {
-        return PLANET_CENTER.clone().addScaledVector(targetNormal, targetRadius);
-    }
-
-    const sourceDirection = sourceVector.normalize();
-    const sourceAngle = Math.acos(THREE.MathUtils.clamp(sourceDirection.dot(targetNormal), -1, 1));
-    const tangent = sourceDirection.clone().addScaledVector(
-        targetNormal,
-        -sourceDirection.dot(targetNormal)
-    );
-    if (tangent.lengthSq() < 1e-6) tangent.set(1, 0, 0);
-    tangent.normalize();
-
-    const minimumCosine = targetRadius / sourceDistance;
-    const targetIncidence = Math.sin(APPROACH_ANGLE);
-    let low = minimumCosine;
-    let high = 1;
-    for (let iteration = 0; iteration < 32; iteration += 1) {
-        const cosine = (low + high) * 0.5;
-        const chord = Math.sqrt(
-            sourceDistance * sourceDistance + targetRadius * targetRadius -
-            2 * sourceDistance * targetRadius * cosine
-        );
-        const incidence = (sourceDistance * cosine - targetRadius) / chord;
-        if (incidence < targetIncidence) low = cosine;
-        else high = cosine;
-    }
-
-    const approachAngle = Math.acos((low + high) * 0.5);
-    const offsetAngle = approachAngle - sourceAngle;
-    const surfaceNormal = targetNormal.clone()
-        .multiplyScalar(Math.cos(offsetAngle))
-        .addScaledVector(tangent, -Math.sin(offsetAngle))
-        .normalize();
-    return PLANET_CENTER.clone().addScaledVector(surfaceNormal, targetRadius);
+    return PLANET_CENTER.clone().addScaledVector(landingSurfaceNormal, targetRadius);
 }
 
 function makeCoreGeometry(rows = 96, segments = 24) {
@@ -714,6 +720,24 @@ function setupAudio() {
     launchAudio.volume = 0.22;
     launchAudio.preload = 'auto';
 
+    // Distant explosion for whiteout — 1.5× native level via GainNode.
+    explosionAudio = new Audio(`${ASSET_ROOT}/media/launch/DistantExplosion.mp3`);
+    explosionAudio.preload = 'auto';
+    explosionAudio.volume = 1.0;
+    try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (AudioCtx) {
+            const ctx = new AudioCtx();
+            const source = ctx.createMediaElementSource(explosionAudio);
+            explosionGain = ctx.createGain();
+            explosionGain.gain.value = 1.5;
+            source.connect(explosionGain);
+            explosionGain.connect(ctx.destination);
+            explosionAudio._audioCtx = ctx;
+        }
+    } catch (_) {
+        explosionAudio.volume = 1.0;
+    }
 }
 
 function startLaunchAudio() {
@@ -722,26 +746,42 @@ function startLaunchAudio() {
     if (play && typeof play.catch === 'function') play.catch(() => {});
 }
 
-function stopLaunchAudio() {
-    if (!launchAudio) return;
+function playExplosionAudio() {
+    if (!explosionAudio || explosionTriggered) return;
+    explosionTriggered = true;
     try {
-        launchAudio.pause();
-        launchAudio.currentTime = 0;
+        if (explosionAudio._audioCtx && explosionAudio._audioCtx.state === 'suspended') {
+            explosionAudio._audioCtx.resume().catch(() => {});
+        }
+        explosionAudio.currentTime = 0;
+        const play = explosionAudio.play();
+        if (play && typeof play.catch === 'function') play.catch(() => {});
     } catch (_) { /* noop */ }
 }
 
-function syncRocketToDummy(elapsed = 0) {
+function stopLaunchAudio() {
+    if (launchAudio) {
+        try {
+            launchAudio.pause();
+            launchAudio.currentTime = 0;
+        } catch (_) { /* noop */ }
+    }
+    if (explosionAudio) {
+        try {
+            explosionAudio.pause();
+            explosionAudio.currentTime = 0;
+        } catch (_) { /* noop */ }
+    }
+}
+
+function syncRocketToDummy() {
     if (!dummyRocket || !rocketRoot || stationExtensionComplete) return;
     stationRoot.updateMatrixWorld(true);
     dummyRocket.updateWorldMatrix(true, false);
     dummyRocket.getWorldPosition(_dummyWorldPos);
-    dummyRocket.getWorldQuaternion(_dummyWorldQuat);
 
-    const extension = THREE.MathUtils.smoothstep(elapsed, 0, ROCKET_EXTRACTION_SECONDS);
-    const forward = ROCKET_LONGITUDINAL_AXIS.clone().applyQuaternion(_dummyWorldQuat).normalize();
-    rocketRoot.position.copy(_dummyWorldPos)
-        .addScaledVector(forward, ROCKET_EXTRACTION_DISTANCE * extension);
-    rocketRoot.quaternion.copy(_dummyWorldQuat);
+    rocketRoot.position.copy(_dummyWorldPos).addScaledVector(railDirection, -ROCKET_STATION_OFFSET);
+    orientRocketAlongFlight(railDirection, rocketRoot.quaternion);
     rocketRoot.scale.setScalar(stationBayScale);
     dummyRocket.visible = false;
 }
@@ -755,7 +795,7 @@ function updateStationAnimation(delta, elapsed) {
             mechanismAction.paused = true;
             stationAction.paused = true;
             stationMixer.update(0);
-            syncRocketToDummy(extractionDuration);
+            syncRocketToDummy();
             stationExtensionComplete = true;
         }
         return;
@@ -797,15 +837,22 @@ function updateStationAnimation(delta, elapsed) {
     }
 }
 
+function orientRocketAlongFlight(direction, outQuat) {
+    outQuat.setFromUnitVectors(ROCKET_LONGITUDINAL_AXIS, direction);
+    _logoRollQuat.setFromAxisAngle(ROCKET_LONGITUDINAL_AXIS, ROCKET_LOGO_ROLL);
+    outQuat.multiply(_logoRollQuat);
+    return outQuat;
+}
+
 function beginFlight() {
     if (flightStarted) return;
     flightStarted = true;
 
     const start = rocketRoot.position.clone();
-    const surfacePoint = getFlightSurfacePoint(start);
+    const surfacePoint = getFlightSurfacePoint();
     flightCurve = new THREE.LineCurve3(start, surfacePoint);
     rocketDirection.copy(surfacePoint).sub(start).normalize();
-    targetOrientation.setFromUnitVectors(ROCKET_LONGITUDINAL_AXIS, rocketDirection);
+    orientRocketAlongFlight(rocketDirection, targetOrientation);
     rocketRoot.quaternion.copy(targetOrientation);
 
     dummyRocket.visible = false;
@@ -816,17 +863,22 @@ function updateRocket(elapsed, flightProgress, delta) {
     if (!rocketRoot) return;
 
     if (!flightStarted) {
-        syncRocketToDummy(elapsed);
+        syncRocketToDummy();
         return;
     }
 
     const progress = THREE.MathUtils.clamp(flightProgress, 0, 1);
     const travel = progress * progress * (3 - 2 * progress);
     rocketRoot.position.copy(flightCurve.getPoint(travel));
-    rocketDirection.copy(flightCurve.getTangent(travel)).normalize();
+    rocketDirection.copy(flightCurve.v2).sub(rocketRoot.position);
+    if (rocketDirection.lengthSq() > 1e-8) {
+        rocketDirection.normalize();
+    } else {
+        rocketDirection.copy(PLANET_CENTER).sub(rocketRoot.position).normalize();
+    }
 
-    targetOrientation.setFromUnitVectors(ROCKET_LONGITUDINAL_AXIS, rocketDirection);
-    rocketRoot.quaternion.slerp(targetOrientation, 0.14);
+    orientRocketAlongFlight(rocketDirection, targetOrientation);
+    rocketRoot.quaternion.copy(targetOrientation);
 
     const engineThrust = THREE.MathUtils.smoothstep(elapsed, STATION_PULL_SECONDS + 0.1, STATION_PULL_SECONDS + 0.7) *
         (1 - THREE.MathUtils.smoothstep(progress, 0.9, 1));
@@ -852,19 +904,16 @@ function updateRocket(elapsed, flightProgress, delta) {
 }
 
 function updateCamera(elapsed, flightProgress) {
-    if (!flightStarted || elapsed < STATION_PULL_SECONDS + 0.15) {
-        const target = rocketRoot ? rocketRoot.position : INITIAL_CAMERA_TARGET;
-        const cameraOffset = INITIAL_CAMERA_POSITION.clone().sub(INITIAL_CAMERA_TARGET);
-        camera.position.lerp(target.clone().add(cameraOffset), 0.08);
-        camera.lookAt(target);
+    if (!flightStarted) {
+        camera.lookAt(INITIAL_CAMERA_TARGET);
         return;
     }
 
     if (flightProgress >= CAMERA_STOP_PROGRESS) return;
 
     const follow = THREE.MathUtils.smoothstep(elapsed, STATION_PULL_SECONDS + 0.15, STATION_PULL_SECONDS + 1.4);
-    const back = 0.22;
-    const up = 0.05;
+    const back = 0.28;
+    const up = 0.06;
     const mount = rocketRoot.position.clone()
         .addScaledVector(rocketDirection, -back)
         .add(new THREE.Vector3(0, up, 0));
@@ -876,7 +925,7 @@ function updateCamera(elapsed, flightProgress) {
     lookAhead.lerp(PLANET_CENTER, earthBias * 0.35);
     camera.lookAt(lookAhead);
 
-    camera.fov = 40;
+    camera.fov = 46;
     camera.updateProjectionMatrix();
 }
 
@@ -887,6 +936,8 @@ function updateOverlays(elapsed) {
 
     const white = THREE.MathUtils.smoothstep(elapsed, WHITEOUT_START, WHITEOUT_START + 2.2);
     if (whiteout) whiteout.style.opacity = String(white);
+    // Fire distant explosion once as the whiteout begins.
+    if (white > 0.02) playExplosionAudio();
 
     const black = THREE.MathUtils.smoothstep(elapsed, BLACKOUT_START, BLACKOUT_START + 1.0);
     if (blackout) blackout.style.opacity = String(black);
@@ -946,6 +997,7 @@ async function initRocketAnimation(containerId) {
     mechanismRetractionComplete = false;
     doorCloseStarted = false;
     doorsClosed = false;
+    explosionTriggered = false;
 
     const container = document.getElementById(containerId);
     if (!container) throw new Error(`Container #${containerId} not found`);
@@ -964,8 +1016,12 @@ async function initRocketAnimation(containerId) {
     loading?.classList.add('is-visible');
     setLoadingProgress(0, 1);
 
-    const latitude = Number(container.dataset.latitude) || 0;
-    const longitude = Number(container.dataset.longitude) || 0;
+    const latitude = Number(container.dataset.latitude);
+    const longitude = Number(container.dataset.longitude);
+    if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90 ||
+        !Number.isFinite(longitude) || longitude < -180 || longitude > 180) {
+        throw new Error('Valid landing coordinates are required to start the flight');
+    }
     const assets = await preloadAssets();
 
     createRenderer(container);
@@ -975,7 +1031,7 @@ async function initRocketAnimation(containerId) {
     makePlanet(assets, latitude, longitude);
     orientStationForFlight();
 
-    syncRocketToDummy(0);
+    syncRocketToDummy();
 
     stationAction.reset();
     stationAction.play();
@@ -999,6 +1055,9 @@ export function stopRocketAnimation() {
 
     stopLaunchAudio();
     launchAudio = null;
+    explosionAudio = null;
+    explosionGain = null;
+    explosionTriggered = false;
     flightStarted = false;
     stationExtensionComplete = false;
     mechanismRetractionStarted = false;
