@@ -1,0 +1,23 @@
+Файл                                | Ширина (px)  | Высота (px) 
+-----------------------------------------------------------------
+ORBCOMM-2.jpg                       | 3000         | 2000        
+news-dragon.jpg                     | 1280         | 853         
+hunga_tonga_dome.jpg                | 2880         | 1440        
+crs9_double_beam.jpg                | 3000         | 2000        
+formosat_sea.jpg                    | 3000         | 2000        
+ORBCOMM-2_1280.jpg                  | 1280         | 853         
+news-iridium.jpg                    | 1280         | 1920        
+SpaceX_Crew-5_Launch_Photos.jpeg    | 3000         | 2000        
+SpaceX_Crew_Dragon.jpg              | 3840         | 2560        
+dragon_abort.jpg                    | 2000         | 3000        
+jcsat_night.jpg                     | 3000         | 2000        
+sarychev_mushroom.jpg               | 1440         | 960         
+news-crs9.jpg                       | 1280         | 853         
+earth_specular_2048.jpg             | 2048         | 1024        
+earth_clouds_2048.png               | 2048         | 1024        
+earth_lights_2048.png               | 2048         | 1024        
+moon_1024.jpg                       | 1024         | 512         
+earth_atmos_2048-summer.jpg         | 2048         | 1024        
+earth_clouds_1024.png               | 1024         | 512         
+earth_atmos_4096-winter.jpg         | 2048         | 1024        
+word_Y.svg                          | 96           | 38 
