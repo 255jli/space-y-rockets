@@ -8,6 +8,7 @@ ENABLE_PREVIEW = True — рендерит 4 кадра в scripts/station/previ
 import bpy
 import math
 import os
+from mathutils import Matrix
 
 BLEND_PATH = "//station_base.blend"
 GLB_PATH = "//../../static/models/station.glb"
@@ -32,6 +33,7 @@ def fr(seconds):
 door_l = bpy.data.objects["bay_01_hinge_left"]
 door_r = bpy.data.objects["bay_01_hinge_right"]
 dummy = bpy.data.objects["dummy_rocket"]
+carriage = bpy.data.objects["claw_carriage"]
 
 # ================= СТВОРКИ =================
 
@@ -58,7 +60,6 @@ def set_smooth_interpolation(obj):
 
 
 def animate_door(obj, angle):
-    # Закрытие начинается после того, как клешни убраны.
     for seconds, value in (
         (0, 0),
         (T_OPEN, angle),
@@ -136,37 +137,60 @@ for pair, delay in (("front", 0), ("rear", 0.35)):
     animate_claw(f"{pair}_top", +1, delay)
     animate_claw(f"{pair}_bottom", -1, delay)
 
-# ================= DUMMY ROCKET =================
-start_y = dummy.location.y
-carriage = bpy.data.objects["claw_carriage"]
-carriage_y = carriage.location.y
+# ================= DUMMY ROCKET + REILS =================
+# Ракета (rocket.glb) заменяет dummy. Модель ракеты вдоль локальной Y после
+# Y-up экспорта. Поворачиваем на 90° вокруг Z, чтобы продольная ось была
+# параллельна корпусу станции (ось X), а извлечение шло вдоль рельс (ось Y).
+
 pull_distance = float(carriage.get("travel_distance", 7.0))
 approach_distance = float(carriage.get("approach_distance", 1.5))
+carriage_y0 = carriage.location.y
 
+# Ориентация: параллельно корпусу (X), «нос» может смотреть в +X или −X.
+PARALLEL_Z = math.radians(90)
+dummy.rotation_euler = (0.0, 0.0, PARALLEL_Z)
+for seconds in (0, T_CLOSE):
+    dummy.keyframe_insert(data_path="rotation_euler", frame=fr(seconds))
+set_smooth_interpolation(dummy)
+
+# Каретка едет по рельсам (Y).
 for seconds, y in (
-    (0, carriage_y),
-    (T_OPEN, carriage_y),
-    (T_RAIL, carriage_y + approach_distance),
-    (T_GRIP, carriage_y + approach_distance),
-    (T_PULL, carriage_y + approach_distance + pull_distance),
-    (T_REL, carriage_y + approach_distance + pull_distance),
-    (T_CLAW_RET, carriage_y + approach_distance + pull_distance),
-    (T_RAIL_RET, carriage_y),
+    (0, carriage_y0),
+    (T_OPEN, carriage_y0),
+    (T_RAIL, carriage_y0 + approach_distance),
+    (T_GRIP, carriage_y0 + approach_distance),
+    (T_PULL, carriage_y0 + approach_distance + pull_distance),
+    (T_REL, carriage_y0 + approach_distance + pull_distance),
+    (T_CLAW_RET, carriage_y0 + approach_distance + pull_distance),
+    (T_RAIL_RET, carriage_y0),
 ):
     carriage.location.y = y
     carriage.keyframe_insert(data_path="location", index=1, frame=fr(seconds))
 set_smooth_interpolation(carriage)
 
+# Привязываем dummy к каретке, сохраняя мировую позу — движение строго по рельсам.
+bpy.context.view_layer.update()
+mw = dummy.matrix_world.copy()
+dummy.parent = carriage
+dummy.matrix_parent_inverse = carriage.matrix_world.inverted()
+dummy.matrix_world = mw
+bpy.context.view_layer.update()
+
+# Локальный сдвиг dummy вдоль рельс во время PULL (после захвата).
+# До GRIP — сидит в отсеке; с GRIP→PULL — выезжает вместе с кареткой +
+# дополнительный локальный вынос, если нужен. Основной ход даёт каретка.
+local_y0 = dummy.location.y
 for seconds, y in (
-    (0, start_y),
-    (T_GRIP, start_y),
-    (T_PULL, start_y + pull_distance),
-    (T_REL, start_y + pull_distance),
-    (T_CLOSE, start_y + pull_distance),
+    (0, local_y0),
+    (T_GRIP, local_y0),
+    (T_PULL, local_y0),
+    (T_REL, local_y0),
+    (T_CLOSE, local_y0),
 ):
     dummy.location.y = y
     dummy.keyframe_insert(data_path="location", index=1, frame=fr(seconds))
 set_smooth_interpolation(dummy)
+
 scene.frame_set(scene.frame_start)
 
 # ================= ЭКСПОРТ =================
