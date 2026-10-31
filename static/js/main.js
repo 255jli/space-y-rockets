@@ -158,7 +158,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const languageMenu = document.querySelector('.language-menu');
     const languageMenuTrigger = languageMenu?.querySelector('.language-menu-trigger');
 
-    languageMenuTrigger?.addEventListener('click', () => {
+    languageMenu?.addEventListener('pointerenter', event => {
+        if (event.pointerType === 'mouse') {
+            languageMenuTrigger?.setAttribute('aria-expanded', 'true');
+        }
+    });
+
+    languageMenu?.addEventListener('pointerleave', event => {
+        if (event.pointerType === 'mouse') {
+            languageMenuTrigger?.setAttribute('aria-expanded', 'false');
+        }
+    });
+
+    languageMenuTrigger?.addEventListener('click', event => {
+        if (window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
+            event.preventDefault();
+            return;
+        }
         const isOpen = languageMenu.classList.toggle('is-open');
         languageMenuTrigger.setAttribute('aria-expanded', String(isOpen));
     });
@@ -171,6 +187,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    document.addEventListener('click', event => {
+        if (languageMenu && !languageMenu.contains(event.target)) {
+            languageMenu.classList.remove('is-open');
+            languageMenuTrigger?.setAttribute('aria-expanded', 'false');
+        }
+    });
+
     document.querySelectorAll('[data-language]').forEach(button => {
         button.addEventListener('click', () => {
             setLanguage(button.dataset.language);
@@ -180,7 +203,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Apply default language only if mission/order page has i18n nodes
-    if (document.querySelector('[data-i18n], .rocket-description, #worldMap')) {
+    if (document.querySelector('[data-i18n], .rocket-description, #worldMap, .language-menu')) {
         setLanguage('en');
     }
 });

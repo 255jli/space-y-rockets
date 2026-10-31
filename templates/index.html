@@ -8,7 +8,7 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@500;600;700&family=Roboto:wght@100..900&display=swap" rel="stylesheet">
 
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
@@ -20,33 +20,48 @@
     <header class="spx-header" id="siteHeader">
         <div class="spx-header-inner">
             <a class="spx-logo" href="/" aria-label="SpaceY">
-                <span class="spx-logo-word">SPACE</span><span class="spx-logo-y">Y</span>
+                <span class="spx-logo-word">SPACE</span>
+                <img class="spx-logo-y" src="{{ url_for('static', filename='css/word_Y.svg') }}" alt="">
             </a>
 
-            <nav class="spx-nav" aria-label="Primary">
-                <a href="#" class="spx-nav-link" tabindex="-1">FALLCON 9</a>
-                <a href="#" class="spx-nav-link" tabindex="-1">FALLCON HEAVY</a>
-                <a href="#" class="spx-nav-link" tabindex="-1">STARSHEEP</a>
-                <a href="#" class="spx-nav-link" tabindex="-1">HUMAN SPACEFLIGHT</a>
-                <a href="#" class="spx-nav-link" tabindex="-1">RIDESHARE</a>
-                <a href="#" class="spx-nav-link" tabindex="-1">STARLINK</a>
-            </nav>
+            <div class="spx-nav" role="group" aria-label="Header labels">
+                <span class="spx-nav-label">Button 1</span>
+                <span class="spx-nav-label">Button 2</span>
+                <span class="spx-nav-label">Button three</span>
+                <span class="spx-nav-label">Button 4</span>
+                <span class="spx-nav-label">Button 5</span>
+                <span class="spx-nav-label">Button 6</span>
+                <span class="spx-nav-label">Button 7</span>
+                <span class="spx-nav-label">Button 8</span>
+            </div>
 
+            <div class="language-menu">
+                <button class="language-menu-trigger" type="button" aria-expanded="false" aria-controls="headerLanguageOptions">
+                    <span>UPCOMING LANGUAGES</span>
+                    <span class="language-menu-chevron" aria-hidden="true"></span>
+                </button>
+                <div class="language-menu-options" id="headerLanguageOptions">
+                    <button type="button" data-language="en" aria-pressed="false">English</button>
+                    <button type="button" data-language="ru" aria-pressed="false">Русский</button>
+                    <button type="button" data-language="zh" aria-pressed="false">中文</button>
+                </div>
+            </div>
             <button class="spx-menu-btn" type="button" aria-label="Menu" aria-expanded="false" id="menuToggle">
                 <span></span><span></span><span></span>
             </button>
         </div>
     </header>
 
-    <!-- Mobile drawer (links mostly non-functional) -->
+    <!-- Mobile navigation drawer -->
     <div class="spx-drawer" id="mobileDrawer" hidden>
-        <a href="#">FALCON 9</a>
-        <a href="#">FALCON HEAVY</a>
-        <a href="#">STARSHEEP</a>
-        <a href="#">HUMAN SPACEFLIGHT</a>
-        <a href="#">RIDESHARE</a>
-        <a href="#">STARLINK</a>
-        <a href="{{ url_for('mission') }}">MISSION SIMULATOR</a>
+        <span>Button 1</span>
+        <span>Button 2</span>
+        <span>Button three</span>
+        <span>Button 4</span>
+        <span>Button 5</span>
+        <span>Button 6</span>
+        <span>Button 7</span>
+        <span>Button 8</span>
     </div>
 
     <!-- =========================================================
@@ -67,20 +82,21 @@
     <!-- =========================================================
          PANEL 2 — Making life multiplanetary
          ========================================================= -->
-    <section class="spx-panel" id="panel-multiplanetary">
-        <img class="spx-panel-media" src="{{ url_for('static', filename='images/SpaceX_Crew-5_Launch_Photos.jpeg') }}" alt="" loading="lazy">
-        <div class="spx-panel-scrim"></div>
+    <section class="spx-panel spx-panel--earth" id="panel-multiplanetary">
+        <div class="earth-hero-visual" aria-hidden="true">
+            <canvas id="earthHeroCanvas"></canvas>
+        </div>
         <div class="spx-panel-content">
-            <h2 class="spx-headline">MAKING LIFE MULTIPLANETARY</h2>
-            <p class="spx-body">%%%% ##@@ &&&& **** %%%% ##@@ &&&& **** %%%% ##@@ &&&& **** %%%% ##@@ &&&& **** %%%% ##@@ &&&& ****</p>
-            <a class="spx-cta" href="#">EXPLORE</a>
+            <h2 class="spx-headline">MAKING<br>LIFE<br>MULTIPLANETARY</h2>
+            <p class="spx-body">We believe humanity thrives when it explores beyond Earth. A future among the stars is more exciting than standing still.</p>
+            <a class="spx-cta" href="#"><span>EXPLORE</span><span class="spx-cta-arrow" aria-hidden="true">→</span></a>
         </div>
     </section>
 
     <!-- =========================================================
          PANEL 3 — Starsheep system
          ========================================================= -->
-    <section class="spx-panel" id="panel-starsheep">
+    <section class="spx-panel spx-panel--text-right" id="panel-starsheep">
         <img class="spx-panel-media" src="{{ url_for('static', filename='images/SpaceX_Crew_Dragon.jpg') }}" alt="" loading="lazy">
         <div class="spx-panel-scrim"></div>
         <div class="spx-panel-content">
@@ -106,7 +122,7 @@
     <!-- =========================================================
          PANEL 5 — Human spaceflight
          ========================================================= -->
-    <section class="spx-panel" id="panel-crew">
+    <section class="spx-panel spx-panel--text-right" id="panel-crew">
         <img class="spx-panel-media" src="{{ url_for('static', filename='images/dragon_abort.jpg') }}" alt="" loading="lazy">
         <div class="spx-panel-scrim"></div>
         <div class="spx-panel-content">
@@ -149,15 +165,37 @@
         </div>
     </footer>
 
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="{{ url_for('static', filename='js/earth-hero.js', v='6') }}"></script>
     <script>
         (function () {
             const header = document.getElementById('siteHeader');
             const toggle = document.getElementById('menuToggle');
             const drawer = document.getElementById('mobileDrawer');
+            let previousScrollY = window.scrollY;
+            let scrollTicking = false;
+
+            function updateHeaderOnScroll() {
+                const currentScrollY = window.scrollY;
+                header.classList.toggle('is-scrolled', currentScrollY > 40);
+
+                if (currentScrollY <= 40 || currentScrollY < previousScrollY) {
+                    header.classList.remove('is-hidden');
+                } else if (currentScrollY > previousScrollY &&
+                    !header.contains(document.activeElement) &&
+                    drawer.hasAttribute('hidden')) {
+                    header.classList.add('is-hidden');
+                }
+
+                previousScrollY = currentScrollY;
+                scrollTicking = false;
+            }
 
             window.addEventListener('scroll', function () {
-                if (window.scrollY > 40) header.classList.add('is-scrolled');
-                else header.classList.remove('is-scrolled');
+                if (scrollTicking) return;
+                scrollTicking = true;
+                window.requestAnimationFrame(updateHeaderOnScroll);
             }, { passive: true });
 
             toggle.addEventListener('click', function () {
@@ -165,10 +203,17 @@
                 if (open) {
                     drawer.removeAttribute('hidden');
                     toggle.setAttribute('aria-expanded', 'true');
+                    header.classList.remove('is-hidden');
                 } else {
                     drawer.setAttribute('hidden', '');
                     toggle.setAttribute('aria-expanded', 'false');
                 }
+            });
+
+            drawer.addEventListener('click', function (event) {
+                if (!event.target.closest('a')) return;
+                drawer.setAttribute('hidden', '');
+                toggle.setAttribute('aria-expanded', 'false');
             });
         })();
     </script>
