@@ -47,6 +47,9 @@ Output is written to `dist/`.
 - `static/images/`, `static/media/` — CC0 / public-domain assets where catalogued
 - `scripts/` — tooling (layout scrape, models, etc.)
 
+For AI contributor guidance, file ownership, and the current landing-page design
+baseline, see [AI_PROJECT_GUIDE.md](./AI_PROJECT_GUIDE.md).
+
 ## Disclaimer
 
 This is a fictional parody project for educational and entertainment purposes only.
