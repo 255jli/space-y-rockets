@@ -3,14 +3,16 @@ const ASSET_ROOT = '/static';
 const STATION_SCALE = 0.012;
 let STATION_PULL_SECONDS = 18;
 const FLIGHT_SECONDS = 11;
-let WHITEOUT_START = STATION_PULL_SECONDS + FLIGHT_SECONDS + 0.4;
+const CAMERA_BRAKE_START_PROGRESS = 0.68;
+const CAMERA_STOP_PROGRESS = 0.98;
+let WHITEOUT_START = STATION_PULL_SECONDS + FLIGHT_SECONDS * CAMERA_BRAKE_START_PROGRESS;
+let WHITEOUT_END = STATION_PULL_SECONDS + FLIGHT_SECONDS * CAMERA_STOP_PROGRESS;
 let BLACKOUT_START = WHITEOUT_START + 2.8;
 let END_CARD_START = BLACKOUT_START + 1.0;
 const STATION_PAYLOAD_LENGTH = 2.2;
 const EXTRACTION_HOLD_SECONDS = 0.8;
 const ROCKET_SURFACE_CLEARANCE = 0.42;
 const ROCKET_STATION_OFFSET = STATION_SCALE * 0.15;
-const CAMERA_STOP_PROGRESS = 0.88;
 const ROCKET_LONGITUDINAL_AXIS = new THREE.Vector3(0, 1, 0);
 const STATION_LONGITUDINAL_AXIS = new THREE.Vector3(0, 1, 0);
 const LANDING_SURFACE_NORMAL = new THREE.Vector3(0, 0, 1);
@@ -65,6 +67,7 @@ let doorCloseDuration = 0;
 let resources = [];
 let activeContainer;
 let disposed = false;
+let animationRunId = 0;
 let launchAudio = null;
 let explosionAudio = null;
 let explosionGain = null;
@@ -83,6 +86,7 @@ const rocketDirection = new THREE.Vector3(0, 0, -1);
 const _dummyWorldPos = new THREE.Vector3();
 const _toPlanet = new THREE.Vector3();
 const _logoRollQuat = new THREE.Quaternion();
+const _cameraShakeOffset = new THREE.Vector3();
 
 const LOCALIZED_LOADING = {
     en: { loading: 'Preparing flight…', failed: 'The flight scene could not be loaded.' },
@@ -93,9 +97,11 @@ const LOCALIZED_LOADING = {
 function setLoadingProgress(loaded, total) {
     const bar = activeContainer?.querySelector('.cinema-loading-bar');
     const text = activeContainer?.querySelector('.cinema-loading-text');
-    if (!bar || !text) return;
+    const track = activeContainer?.querySelector('.cinema-loading-track');
+    if (!bar || !text || !track) return;
     const progress = total ? Math.round((loaded / total) * 100) : 0;
     bar.style.width = `${progress}%`;
+    track.setAttribute('aria-valuenow', String(progress));
     text.textContent = `${localizedText().loading} ${progress}%`;
 }
 
@@ -125,9 +131,11 @@ function loadTexture(loader, path, colorTexture = true) {
     });
 }
 
-async function preloadAssets() {
+async function preloadAssets(runId) {
     const manager = new THREE.LoadingManager();
-    manager.onProgress = (_url, loaded, total) => setLoadingProgress(loaded, total);
+    manager.onProgress = (_url, loaded, total) => {
+        if (runId === animationRunId) setLoadingProgress(loaded, total);
+    };
     const gltfLoader = new THREE.GLTFLoader(manager);
     const textureLoader = new THREE.TextureLoader(manager);
 
@@ -203,7 +211,6 @@ function makePlanet(assets, latitude, longitude) {
         new THREE.SphereGeometry(PLANET_UNIT_RADIUS, 128, 96),
         earthMaterial
     );
-    earth.rotation.x = Math.PI;
     planet.add(earth);
 
     clouds = new THREE.Mesh(
@@ -211,7 +218,8 @@ function makePlanet(assets, latitude, longitude) {
         new THREE.MeshLambertMaterial({
             map: cloudTexture,
             transparent: true,
-            opacity: 0.34,
+            color: 0xeaf3ff,
+            opacity: 0.5,
             depthWrite: false
         })
     );
@@ -378,7 +386,8 @@ function addStation(stationGltf) {
     doorCloseDuration = (sourceClip.duration - doorCloseClipTime) / stationMixer.timeScale;
     STATION_PULL_SECONDS = extractionDuration + EXTRACTION_HOLD_SECONDS +
         mechanismRetractionDuration + doorCloseDuration;
-    WHITEOUT_START = STATION_PULL_SECONDS + FLIGHT_SECONDS - 1.5;
+    WHITEOUT_START = STATION_PULL_SECONDS + FLIGHT_SECONDS * CAMERA_BRAKE_START_PROGRESS;
+    WHITEOUT_END = STATION_PULL_SECONDS + FLIGHT_SECONDS * CAMERA_STOP_PROGRESS;
     BLACKOUT_START = WHITEOUT_START + 2.8;
     END_CARD_START = BLACKOUT_START + 1.0;
 }
@@ -909,21 +918,42 @@ function updateCamera(elapsed, flightProgress) {
         return;
     }
 
-    if (flightProgress >= CAMERA_STOP_PROGRESS) return;
+    camera.position.sub(_cameraShakeOffset);
+    _cameraShakeOffset.set(0, 0, 0);
 
     const follow = THREE.MathUtils.smoothstep(elapsed, STATION_PULL_SECONDS + 0.15, STATION_PULL_SECONDS + 1.4);
+    const cameraBrake = 1 - THREE.MathUtils.smoothstep(
+        flightProgress,
+        CAMERA_BRAKE_START_PROGRESS,
+        CAMERA_STOP_PROGRESS
+    );
     const back = 0.28;
     const up = 0.06;
     const mount = rocketRoot.position.clone()
         .addScaledVector(rocketDirection, -back)
         .add(new THREE.Vector3(0, up, 0));
 
-    camera.position.lerp(mount, 0.06 + follow * 0.12);
+    camera.position.lerp(mount, (0.06 + follow * 0.12) * cameraBrake);
 
     const lookAhead = rocketRoot.position.clone().addScaledVector(rocketDirection, 0.3);
     const earthBias = THREE.MathUtils.smoothstep(flightProgress, 0.15, 0.85);
     lookAhead.lerp(PLANET_CENTER, earthBias * 0.35);
     camera.lookAt(lookAhead);
+
+    const whiteoutProgress = THREE.MathUtils.smoothstep(
+        flightProgress,
+        CAMERA_BRAKE_START_PROGRESS,
+        CAMERA_STOP_PROGRESS
+    );
+    const shakeEnvelope = THREE.MathUtils.smoothstep(flightProgress, CAMERA_BRAKE_START_PROGRESS, 0.76) *
+        (1 - whiteoutProgress);
+    const shake = 0.01 * shakeEnvelope;
+    _cameraShakeOffset.set(
+        (Math.sin(elapsed * 42) + Math.sin(elapsed * 67 + 1.4) * 0.45) * shake,
+        (Math.sin(elapsed * 51 + 0.7) + Math.sin(elapsed * 79) * 0.35) * shake * 0.7,
+        (Math.sin(elapsed * 37 + 2.1) + Math.sin(elapsed * 61 + 0.6) * 0.3) * shake * 0.35
+    );
+    camera.position.add(_cameraShakeOffset);
 
     camera.fov = 46;
     camera.updateProjectionMatrix();
@@ -934,7 +964,7 @@ function updateOverlays(elapsed) {
     const blackout = activeContainer.querySelector('.cinema-blackout');
     const endCard = activeContainer.querySelector('.cinema-end-card');
 
-    const white = THREE.MathUtils.smoothstep(elapsed, WHITEOUT_START, WHITEOUT_START + 2.2);
+    const white = THREE.MathUtils.smoothstep(elapsed, WHITEOUT_START, WHITEOUT_END);
     if (whiteout) whiteout.style.opacity = String(white);
     // Fire distant explosion once as the whiteout begins.
     if (white > 0.02) playExplosionAudio();
@@ -990,7 +1020,9 @@ function disposeObject(object) {
 }
 
 async function initRocketAnimation(containerId) {
+    const runId = ++animationRunId;
     disposed = false;
+    _cameraShakeOffset.set(0, 0, 0);
     flightStarted = false;
     stationExtensionComplete = false;
     mechanismRetractionStarted = false;
@@ -1022,7 +1054,19 @@ async function initRocketAnimation(containerId) {
         !Number.isFinite(longitude) || longitude < -180 || longitude > 180) {
         throw new Error('Valid landing coordinates are required to start the flight');
     }
-    const assets = await preloadAssets();
+    const assets = await preloadAssets(runId);
+    if (runId !== animationRunId) {
+        disposeObject(assets.stationGltf.scene);
+        disposeObject(assets.rocketGltf.scene);
+        const staleTextures = new Set([
+            assets.earthTexture,
+            assets.cloudTexture,
+            assets.moonTexture
+        ]);
+        resources = resources.filter(resource => !staleTextures.has(resource));
+        staleTextures.forEach(texture => texture.dispose());
+        return;
+    }
 
     createRenderer(container);
     setupAudio();
@@ -1048,6 +1092,8 @@ async function initRocketAnimation(containerId) {
 
 export function stopRocketAnimation() {
     disposed = true;
+    animationRunId += 1;
+    _cameraShakeOffset.set(0, 0, 0);
     if (animationFrame) cancelAnimationFrame(animationFrame);
     animationFrame = 0;
     if (resizeHandler) window.removeEventListener('resize', resizeHandler);
@@ -1098,22 +1144,21 @@ export function stopRocketAnimation() {
 }
 
 window.startRocketAnimation = () => {
+    const runId = animationRunId + 1;
     initRocketAnimation('animationContainer').catch(error => {
+        if (runId !== animationRunId) return;
         console.error('Не удалось подготовить сцену полёта.', error);
         const container = document.getElementById('animationContainer');
         if (!container) return;
         const errorMessage = localizedText().failed;
         stopRocketAnimation();
         activeContainer = container;
-        const loading = container.querySelector('.cinema-loading');
         const errorText = container.querySelector('.cinema-loading-error');
-        const returnButton = container.querySelector('.cinema-loading-return');
-        loading?.classList.add('is-visible');
+        container.querySelector('.cinema-loading')?.classList.add('is-visible');
         if (errorText) {
             errorText.hidden = false;
             errorText.textContent = errorMessage;
         }
-        if (returnButton) returnButton.hidden = false;
     });
 };
 window.stopRocketAnimation = stopRocketAnimation;

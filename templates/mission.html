@@ -8,7 +8,7 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@500;600;700&display=swap" rel="stylesheet">
 
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
@@ -17,7 +17,8 @@
     <header class="spx-header is-scrolled mission-header">
         <div class="spx-header-inner">
             <a class="spx-logo" href="/" aria-label="SpaceY">
-                <span class="spx-logo-word">SPACE</span><span class="spx-logo-y">Y</span>
+                <span class="spx-logo-word">SPACE</span>
+                <img class="spx-logo-y" src="{{ url_for('static', filename='css/word_Y.svg') }}" alt="">
             </a>
             <nav class="spx-nav" aria-label="Primary">
                 <a href="/" class="spx-nav-link">HOME</a>
@@ -34,17 +35,14 @@
     <!-- 3D animation overlay -->
     <div id="animationContainer" class="animation-container" style="display: none;" role="dialog" aria-modal="true" aria-label="Cinematic flight simulation">
         <canvas id="globeCanvas"></canvas>
-        <p class="cinema-flight-label" id="cinemaFlightLabel" aria-live="polite"></p>
         <div class="cinema-loading is-visible" role="status" aria-live="polite">
             <p class="cinema-loading-text">Preparing flight…</p>
-            <div class="cinema-loading-track" aria-hidden="true">
+            <div class="cinema-loading-track" role="progressbar" aria-label="Flight asset loading progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
                 <span class="cinema-loading-bar"></span>
             </div>
             <p class="cinema-loading-error" hidden></p>
-            <button class="btn btn-primary cinema-loading-return" type="button" data-return-home hidden>
-                Return
-            </button>
         </div>
+        <button class="cinema-loading-return" type="button" data-return-home>Return to landing page</button>
         <div id="cinemaWhiteout" class="cinema-whiteout"></div>
         <div id="cinemaBlackout" class="cinema-blackout"></div>
         <section id="cinemaEndCard" class="cinema-end-card" aria-labelledby="cinemaEndTitle">
@@ -62,7 +60,10 @@
             </div>
             <p class="customer-counter-proof">Да, это настоящий счётчик</p>
             <p class="customer-counter-footnote">Ваш отзыв очень важен. Но абсолютно бесполезен</p>
-            <p id="customerCounterStatus" class="customer-counter-status" role="status" aria-live="polite"></p>
+            <p id="customerCounterStatus" class="customer-counter-status" role="status" aria-live="polite" hidden>
+                <span class="customer-counter-status-indicator" aria-hidden="true"></span>
+                <span id="customerCounterStatusMessage"></span>
+            </p>
             <button class="btn btn-primary" type="button" data-return-home>Return</button>
         </section>
     </div>

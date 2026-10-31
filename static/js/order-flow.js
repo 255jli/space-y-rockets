@@ -17,7 +17,6 @@ let customerCounterStatus = null;
 const CUSTOMER_COUNTER_STATUS_MESSAGES = {
     loading: 'Загрузка счётчика клиентов…',
     updating: 'Обновляем счётчик…',
-    thanks: 'Спасибо за отзыв!',
     error: 'Не удалось обновить счётчик. Попробуйте позже.',
     unavailable: 'Счётчик сейчас недоступен.'
 };
@@ -40,7 +39,11 @@ function messages() {
 function updateCustomerCounterStatus(statusKey) {
     customerCounterStatus = statusKey;
     const status = document.getElementById('customerCounterStatus');
-    if (status) status.textContent = statusKey ? CUSTOMER_COUNTER_STATUS_MESSAGES[statusKey] : '';
+    const message = document.getElementById('customerCounterStatusMessage');
+    if (!status || !message) return;
+    status.hidden = !statusKey;
+    status.classList.toggle('is-busy', statusKey === 'loading' || statusKey === 'updating');
+    message.textContent = statusKey ? CUSTOMER_COUNTER_STATUS_MESSAGES[statusKey] : '';
 }
 
 function renderCustomerCounter() {
@@ -111,7 +114,7 @@ async function initializeCustomerCounter() {
             if (!result.committed) throw new Error('Customer counter transaction was not committed');
             customerCounterValue = result.snapshot.val();
             renderCustomerCounter();
-            updateCustomerCounterStatus('thanks');
+            updateCustomerCounterStatus(null);
         } catch (error) {
             console.error('[SpaceY] Customer counter update failed.', error);
             updateCustomerCounterStatus('error');
@@ -243,13 +246,7 @@ function startDelivery() {
 
     animationContainer.dataset.latitude = String(targetLatitude);
     animationContainer.dataset.longitude = String(targetLongitude);
-    animationContainer.dataset.rocketName = selectedRocket.name;
     animationContainer.dataset.quantity = String(quantity);
-
-    const label = document.getElementById('cinemaFlightLabel');
-    if (label) {
-        label.textContent = `${selectedRocket.name} · ${quantity} ×`;
-    }
 
     if (typeof window.startRocketAnimation === 'function') {
         window.startRocketAnimation();
@@ -257,39 +254,8 @@ function startDelivery() {
 }
 
 function returnToHome() {
-    const animationContainer = document.getElementById('animationContainer');
-    if (animationContainer) animationContainer.style.display = 'none';
     window.stopRocketAnimation?.();
-    document.body.style.overflow = '';
-
-    selectedRocket = null;
-    targetLatitude = null;
-    targetLongitude = null;
-
-    document.querySelectorAll('[data-select-rocket]').forEach(button => {
-        button.setAttribute('aria-pressed', 'false');
-        button.closest('.rocket-card')?.classList.remove('is-selected');
-    });
-
-    const quantityInput = document.getElementById('quantity');
-    if (quantityInput) quantityInput.value = '1';
-    const fuelConsent = document.getElementById('fuelConsent');
-    if (fuelConsent) fuelConsent.checked = false;
-
-    const nameEl = document.getElementById('selectedRocketName');
-    if (nameEl) nameEl.textContent = messages().noVehicle;
-
-    const marker = document.getElementById('mapMarker');
-    if (marker) marker.hidden = true;
-
-    const coords = document.getElementById('selectedCoords');
-    if (coords) coords.textContent = messages().noLocation;
-
-    const label = document.getElementById('cinemaFlightLabel');
-    if (label) label.textContent = '';
-
-    updateLaunchButton();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.location.assign('/');
 }
 
 function initializeOrderFlow() {
