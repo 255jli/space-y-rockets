@@ -70,12 +70,10 @@ button {
     right: 0;
     z-index: 200;
     opacity: 1;
-    filter: brightness(1);
     visibility: visible;
     transition:
         transform 0.32s ease,
         opacity 0.32s ease,
-        filter 0.32s ease,
         background 0.25s ease,
         backdrop-filter 0.25s ease,
         visibility 0s linear;
@@ -120,12 +118,10 @@ button {
 .spx-header.is-hidden {
     opacity: 0;
     transform: translateY(-100%);
-    filter: brightness(0.92);
     pointer-events: none;
     transition:
         transform 0.32s ease,
         opacity 0.32s ease,
-        filter 0.32s ease,
         background 0.25s ease,
         backdrop-filter 0.25s ease,
         visibility 0s linear 0.32s;
@@ -148,7 +144,7 @@ button {
     width: 100%;
     margin: 0 auto;
     padding: 18px clamp(24px, 3vw, 56px);
-    transform: translateY(7px);
+    top: 7px;
 }
 
 .spx-logo {
@@ -204,6 +200,8 @@ button {
     position: relative;
     justify-self: end;
     width: min(100%, 490px);
+    padding-bottom: 8px;
+    margin-bottom: -8px;
 }
 
 .language-menu-trigger {
@@ -262,19 +260,27 @@ button {
     padding: 6px;
     border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 8px;
-    background: rgba(18, 18, 20, 0.78);
+    background: rgba(0, 0, 0, 0.62);
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.48), 0 0 20px rgba(255, 255, 255, 0.07);
-    filter: blur(8px);
     opacity: 0;
-    transform: translateX(16px);
-    transform-origin: top right;
-    transition: opacity 0.2s ease, transform 0.2s ease, filter 0.2s ease, visibility 0s linear 0.2s;
+    transform: translateX(36px);
+    transition:
+        opacity 0.28s ease,
+        transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1),
+        visibility 0s linear 0.28s;
     visibility: hidden;
+    -webkit-backdrop-filter: blur(18px);
     backdrop-filter: blur(18px);
 }
 
 .language-menu.is-open .language-menu-options {
-    filter: blur(0);
+    opacity: 1;
+    transform: translateX(0);
+    transition-delay: 0s;
+    visibility: visible;
+}
+
+.language-menu-trigger[aria-expanded="true"] + .language-menu-options {
     opacity: 1;
     transform: translateX(0);
     transition-delay: 0s;
@@ -283,7 +289,6 @@ button {
 
 @media (hover: hover) and (pointer: fine) {
     .language-menu:hover .language-menu-options {
-        filter: blur(0);
         opacity: 1;
         transform: translateX(0);
         transition-delay: 0s;
