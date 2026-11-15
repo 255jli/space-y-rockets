@@ -11,6 +11,7 @@ const FIREBASE_CONFIG = {
 let selectedRocket = null;
 let targetLatitude = null;
 let targetLongitude = null;
+let paymentStepActive = false;
 let customerCounterValue = null;
 let renderedCustomerCounterValue = null;
 let customerCounterStatus = null;
@@ -196,6 +197,9 @@ function selectLocation(clientX, clientY) {
         marker.hidden = false;
         marker.style.left = `${x * 100}%`;
         marker.style.top = `${y * 100}%`;
+        marker.classList.remove('is-animating');
+        void marker.offsetWidth;
+        marker.classList.add('is-animating');
     }
     updateCoordinateReadout();
     updateLaunchButton();
@@ -216,7 +220,7 @@ function selectRocket(button) {
     updateLaunchButton();
 }
 
-function startDelivery() {
+function confirmDelivery() {
     const currentMessages = messages();
     if (!selectedRocket) {
         window.alert(currentMessages.selectRocket);
@@ -248,9 +252,34 @@ function startDelivery() {
     animationContainer.dataset.longitude = String(targetLongitude);
     animationContainer.dataset.quantity = String(quantity);
 
+    const deliveryOptions = document.getElementById('deliveryOptions');
+    const paymentStep = document.getElementById('paymentStep');
+    const launchBtn = document.getElementById('launchBtn');
+    if (!deliveryOptions || !paymentStep || !launchBtn) return;
+    deliveryOptions.hidden = true;
+    launchBtn.hidden = true;
+    paymentStep.hidden = false;
+    paymentStepActive = true;
+    document.getElementById('paymentTitle')?.focus();
+}
+
+function startDelivery() {
+    if (!paymentStepActive) return;
     if (typeof window.startRocketAnimation === 'function') {
         window.startRocketAnimation();
     }
+}
+
+function editDelivery() {
+    const deliveryOptions = document.getElementById('deliveryOptions');
+    const paymentStep = document.getElementById('paymentStep');
+    const launchBtn = document.getElementById('launchBtn');
+    if (!deliveryOptions || !paymentStep || !launchBtn) return;
+    paymentStep.hidden = true;
+    deliveryOptions.hidden = false;
+    launchBtn.hidden = false;
+    paymentStepActive = false;
+    launchBtn.focus();
 }
 
 function returnToHome() {
@@ -300,7 +329,36 @@ function initializeOrderFlow() {
         });
     }
 
-    document.getElementById('launchBtn')?.addEventListener('click', startDelivery);
+    document.getElementById('launchBtn')?.addEventListener('click', confirmDelivery);
+    document.getElementById('payBtn')?.addEventListener('click', startDelivery);
+    document.getElementById('editDeliveryBtn')?.addEventListener('click', editDelivery);
+
+    document.querySelectorAll('[data-demo-input]').forEach(input => {
+        const showPresetText = () => {
+            input.value = input.dataset.demoValue || '';
+        };
+        input.value = '';
+        input.addEventListener('keydown', event => {
+            if (event.key.length === 1 || event.key === 'Backspace' || event.key === 'Delete') {
+                event.preventDefault();
+                showPresetText();
+            }
+        });
+        input.addEventListener('beforeinput', event => {
+            event.preventDefault();
+            showPresetText();
+        });
+        input.addEventListener('paste', event => {
+            event.preventDefault();
+            showPresetText();
+        });
+        input.addEventListener('drop', event => {
+            event.preventDefault();
+            showPresetText();
+        });
+        input.addEventListener('input', showPresetText);
+        input.addEventListener('change', showPresetText);
+    });
 
     document.querySelectorAll('[data-return-home]').forEach(button => {
         button.addEventListener('click', returnToHome);

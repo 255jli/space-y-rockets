@@ -650,13 +650,23 @@ button {
 
 .btn-primary {
     background: var(--signal);
-    color: #fff;
+    color: #08090d;
     font-weight: 700;
+    box-shadow: 0 4px 16px rgba(255, 255, 255, 0.14);
 }
 
 .btn-primary:hover {
-    filter: brightness(1.08);
+    background: #e5e7eb;
+    filter: none;
     transform: translateY(-1px);
+}
+
+.btn-primary:focus-visible,
+.payment-edit:focus-visible,
+.quantity-step:focus-visible,
+.btn-select:focus-visible {
+    outline: 2px solid #ff806e;
+    outline-offset: 3px;
 }
 
 .btn-primary span {
@@ -811,10 +821,13 @@ button {
 .delivery-form {
     position: sticky;
     top: 96px;
+    max-height: calc(100vh - 112px);
+    max-height: calc(100svh - 112px);
+    overflow-y: auto;
     padding: 22px;
-    border: 1px solid var(--line);
+    border: 1px solid rgba(240, 240, 250, 0.34);
     border-radius: 10px;
-    background: rgba(17, 19, 26, 0.94);
+    background: rgba(17, 19, 26, 0.98);
 }
 
 .order-summary {
@@ -883,9 +896,10 @@ button {
 }
 
 .quantity-step {
-    border: 1px solid var(--line);
+    min-height: 44px;
+    border: 1px solid rgba(240, 240, 250, 0.42);
     border-radius: 6px;
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.12);
     color: var(--text);
     font-size: 18px;
     cursor: pointer;
@@ -893,25 +907,37 @@ button {
 
 .quantity-step:hover,
 .quantity-step:focus-visible {
-    border-color: var(--signal);
-    color: #fff;
+    border-color: #fff;
+    background: rgba(255, 255, 255, 0.2);
 }
 
 .map-panel {
-    overflow: hidden;
-    border: 1px solid var(--line);
+    overflow: visible;
+    border: 1px solid rgba(240, 240, 250, 0.35);
     border-radius: 8px;
-    background: #0b101a;
+    background: #111823;
 }
 
 .world-map {
     position: relative;
+    z-index: 1;
     width: 100%;
     aspect-ratio: 2 / 1;
     overflow: hidden;
+    border-radius: 7px 7px 0 0;
     background: #0b101a;
     cursor: crosshair;
     isolation: isolate;
+    transform: scale(1);
+    transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .world-map:hover {
+        z-index: 4;
+        transform: scale(1.035);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
+    }
 }
 
 .world-map img {
@@ -951,14 +977,45 @@ button {
 .map-marker {
     position: absolute;
     z-index: 3;
-    width: 13px;
-    height: 13px;
-    border: 2px solid white;
+    width: 7px;
+    height: 7px;
+    border: 1px solid rgba(5, 12, 20, 0.85);
     border-radius: 50%;
-    background: #ff806e;
-    box-shadow: 0 0 0 5px rgba(255, 128, 110, 0.2), 0 0 22px rgba(255, 128, 110, 0.9);
+    background: #fff;
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.42), 0 0 10px rgba(255, 255, 255, 0.75);
     transform: translate(-50%, -50%);
     pointer-events: none;
+}
+
+.map-marker::before {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    content: '';
+    pointer-events: none;
+    inset: -5px;
+    border: 1px solid rgba(255, 255, 255, 0.85);
+    border-radius: 50%;
+}
+
+.map-marker.is-animating::before {
+    animation: map-target-pulse 650ms ease-out both;
+}
+
+.delivery-form [hidden] {
+    display: none !important;
+}
+
+@keyframes map-target-pulse {
+    from {
+        opacity: 0.9;
+        transform: scale(0.45);
+    }
+
+    to {
+        opacity: 0;
+        transform: scale(1.7);
+    }
 }
 
 .map-readout {
@@ -968,6 +1025,7 @@ button {
     gap: 12px;
     padding: 11px 13px;
     border-top: 1px solid var(--line);
+    border-radius: 0 0 7px 7px;
     color: var(--muted);
     font-size: 10px;
 }
@@ -1009,13 +1067,84 @@ button {
     gap: 8px;
 }
 
+.payment-step {
+    min-width: 0;
+    padding: 18px;
+    border: 1px solid rgba(240, 240, 250, 0.34);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.035);
+}
+
+.payment-notice {
+    margin: 10px 0 16px;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.5;
+}
+
+.payment-amount {
+    margin-bottom: 16px;
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.payment-fields {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.payment-field {
+    min-width: 0;
+}
+
+.payment-field .form-label {
+    min-height: 2.4em;
+    margin-bottom: 6px;
+}
+
+.payment-field .form-input {
+    min-width: 0;
+    padding: 10px;
+}
+
+.payment-actions {
+    display: grid;
+    gap: 10px;
+    margin-top: 18px;
+}
+
+.payment-edit {
+    min-height: 42px;
+    padding: 0 12px;
+    border: 1px solid rgba(240, 240, 250, 0.5);
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text);
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.payment-edit:hover,
+.payment-edit:focus-visible {
+    border-color: #fff;
+    background: rgba(255, 255, 255, 0.18);
+}
+
 .order-launch:disabled {
+    border: 1px solid #aeb3bd;
+    background: #8b9099;
+    color: #17191e;
+    box-shadow: none;
     cursor: not-allowed;
     opacity: 1;
     transform: none;
 }
 
 .order-launch:disabled:hover {
+    background: #8b9099;
     filter: none;
     transform: none;
 }
@@ -1023,7 +1152,28 @@ button {
 @media (min-width: 1025px) and (min-height: 760px) {
     .delivery-form {
         top: 50%;
+        max-height: calc(100vh - 120px);
+        max-height: calc(100svh - 120px);
         transform: translateY(-50%);
+    }
+}
+
+@media (min-width: 1025px) and (max-height: 759px) {
+    .delivery-form {
+        top: 80px;
+        max-height: calc(100vh - 96px);
+        max-height: calc(100svh - 96px);
+        transform: none;
+        scrollbar-gutter: stable;
+    }
+
+    .order-launch,
+    .payment-actions {
+        position: sticky;
+        bottom: 0;
+        z-index: 4;
+        background: rgba(17, 19, 26, 0.98);
+        padding-top: 10px;
     }
 }
 
@@ -1423,6 +1573,12 @@ button {
 
     .delivery-form {
         position: static;
+        max-height: none;
+        overflow: visible;
+    }
+
+    .payment-fields {
+        grid-template-columns: minmax(0, 1fr);
     }
 }
 
