@@ -645,7 +645,7 @@ button {
     border: none;
     border-radius: 2px;
     cursor: pointer;
-    transition: all 0.25s ease;
+    transition: background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .btn-primary {
@@ -659,6 +659,10 @@ button {
     background: #e5e7eb;
     filter: none;
     transform: translateY(-1px);
+}
+
+.btn-primary:active {
+    transform: translateY(0) scale(0.985);
 }
 
 .btn-primary:focus-visible,
@@ -824,10 +828,16 @@ button {
     max-height: calc(100vh - 112px);
     max-height: calc(100svh - 112px);
     overflow-y: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
     padding: 22px;
     border: 1px solid rgba(240, 240, 250, 0.34);
     border-radius: 10px;
     background: rgba(17, 19, 26, 0.98);
+}
+
+.delivery-form::-webkit-scrollbar {
+    display: none;
 }
 
 .order-summary {
@@ -916,6 +926,7 @@ button {
     border: 1px solid rgba(240, 240, 250, 0.35);
     border-radius: 8px;
     background: #111823;
+    transition: border-color 180ms ease, box-shadow 180ms ease;
 }
 
 .world-map {
@@ -928,15 +939,12 @@ button {
     background: #0b101a;
     cursor: crosshair;
     isolation: isolate;
-    transform: scale(1);
-    transition: transform 180ms ease, box-shadow 180ms ease;
 }
 
 @media (hover: hover) and (pointer: fine) {
-    .world-map:hover {
-        z-index: 4;
-        transform: scale(1.035);
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
+    .map-panel:hover {
+        border-color: rgba(255, 255, 255, 0.62);
+        box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.06);
     }
 }
 
@@ -947,6 +955,14 @@ button {
     filter: invert(1) grayscale(1) brightness(0.56) contrast(1.35);
     opacity: 0.92;
     user-select: none;
+    transition: filter 180ms ease, opacity 180ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .world-map:hover img {
+        filter: invert(1) grayscale(1) brightness(0.62) contrast(1.35);
+        opacity: 1;
+    }
 }
 
 .world-map::after {
@@ -1061,10 +1077,22 @@ button {
 
 .order-launch {
     width: 100%;
+    min-width: 0;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
+    flex-wrap: nowrap;
+    padding: 16px 18px;
+    font-size: 13px;
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+}
+
+.order-launch span {
+    flex: 0 0 auto;
+    margin-left: 0;
+    white-space: nowrap;
 }
 
 .payment-step {
@@ -1073,6 +1101,23 @@ button {
     border: 1px solid rgba(240, 240, 250, 0.34);
     border-radius: 8px;
     background: rgba(255, 255, 255, 0.035);
+    animation: order-step-enter 260ms cubic-bezier(0.2, 0.75, 0.25, 1) both;
+}
+
+#deliveryOptions:not([hidden]) {
+    animation: order-step-enter 260ms cubic-bezier(0.2, 0.75, 0.25, 1) both;
+}
+
+@keyframes order-step-enter {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .payment-notice {
@@ -1124,6 +1169,7 @@ button {
     font-size: 12px;
     font-weight: 600;
     text-transform: uppercase;
+    white-space: nowrap;
     transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 }
 
@@ -1164,16 +1210,19 @@ button {
         max-height: calc(100vh - 96px);
         max-height: calc(100svh - 96px);
         transform: none;
-        scrollbar-gutter: stable;
     }
 
-    .order-launch,
+    #deliveryOptions > .order-launch,
     .payment-actions {
         position: sticky;
         bottom: 0;
         z-index: 4;
         background: rgba(17, 19, 26, 0.98);
         padding-top: 10px;
+    }
+
+    .payment-actions .order-launch {
+        position: static;
     }
 }
 
