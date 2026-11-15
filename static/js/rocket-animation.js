@@ -13,7 +13,7 @@ const STATION_PAYLOAD_LENGTH = 2.2;
 const EXTRACTION_HOLD_SECONDS = 0.8;
 const ROCKET_SURFACE_CLEARANCE = 0.42;
 const ROCKET_STATION_OFFSET = STATION_SCALE * 0.15;
-const ROCKET_LONGITUDINAL_AXIS = new THREE.Vector3(0, 1, 0);
+const ROCKET_LONGITUDINAL_AXIS = new THREE.Vector3(0, 0, 1);
 const STATION_LONGITUDINAL_AXIS = new THREE.Vector3(0, 1, 0);
 const LANDING_SURFACE_NORMAL = new THREE.Vector3(0, 0, 1);
 const landingSurfaceNormal = new THREE.Vector3();
@@ -650,13 +650,14 @@ function addRocket(rocketGltf) {
     const flameAssets = makeFlameMaterials();
     ENGINE_POSITIONS.forEach(([x, y], index) => {
         const engine = new THREE.Group();
-        engine.position.set(x, 2.2 - rocketCenter.y, y);
+        engine.position.set(x, y, 2.2 - rocketCenter.z);
+        engine.rotation.x = Math.PI / 2;
         engine.visible = false;
 
         const core = new THREE.Mesh(flameAssets.coreGeometry, flameAssets.coreMaterials[index]);
         const particles = new THREE.Points(flameAssets.particleGeometry, flameAssets.particleMaterials[index]);
         engine.add(core, particles);
-        rocketModel.add(engine);
+        rocketRoot.add(engine);
         flames.push(engine);
     });
 
@@ -689,9 +690,9 @@ function addRocket(rocketGltf) {
         `
     });
     heatSpot = new THREE.Mesh(heatGeometry, heatMaterial);
-    heatSpot.position.set(0, rocketBounds.max.y - rocketCenter.y - 1.5, 0);
+    heatSpot.position.set(0, 0, rocketBounds.max.z - rocketCenter.z - 1.5);
     heatSpot.visible = false;
-    rocketModel.add(heatSpot);
+    rocketRoot.add(heatSpot);
 }
 
 function createRenderer(container) {
