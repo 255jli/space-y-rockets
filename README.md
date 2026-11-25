@@ -1,23 +1,15 @@
 # SpaceY
 
-SpaceY is a satirical SpaceX-style site. The landing page mimics the spacex.com full-bleed layout. A separate **Mission Simulator** page lets you pick a fictional vehicle, set a delivery point, and watch a Three.js flight animation. No real vehicles are sold or delivered.
+Satirical space company website: full-bleed landing page plus a **Mission Simulator** where you pick a fictional vehicle, set a target, and watch a Three.js launch animation.
 
-## Stack
+**Nothing is for sale. No real rockets are reserved or delivered.** This is fiction for education and entertainment.
 
-- Python and Flask serve the pages and rocket data.
-- Jinja templates in `templates/` (`index.html` = landing, `mission.html` = simulator).
-- Frontend: plain CSS and JavaScript. Three.js r128 from CDN.
-- No npm project or frontend build step.
+## Features
 
-## Pages
-
-| Route | Purpose |
-|-------|---------|
-| `/` | SpaceX-inspired landing (full-viewport panels, most nav links are non-functional) |
-| `/mission` | Vehicle catalog, map, launch simulation |
-| `/api/rockets` | JSON list of vehicles |
-
-The landing **WATCH** / **RESERVE YOUR RIDE** / **OPEN SIMULATOR** CTAs go to `/mission`.
+- Landing page inspired by commercial space-company marketing sites
+- Mission Simulator: vehicle catalog, map target, animated flight
+- Flask backend with JSON rocket catalog (`/api/rockets`)
+- Optional static export via `freeze.py` for hosting without Python
 
 ## Run locally
 
@@ -28,28 +20,39 @@ python app.py
 
 Open http://localhost:8000
 
-Static export:
+| Route | Purpose |
+|-------|---------|
+| `/` | Landing page |
+| `/mission` | Simulator |
+| `/api/rockets` | Vehicle JSON |
+
+## Static site
 
 ```bash
 python freeze.py
 ```
 
-Output is written to `dist/`.
+Output goes to `dist/`. Publish that folder on any static host (GitHub Pages, Netlify, etc.). Three.js loads from a CDN, so visitors need network access for the simulator libraries.
 
-## Project layout
+More detail: [DEPLOYMENT.md](./DEPLOYMENT.md).
 
-- `app.py`, `freeze.py` — Flask app and static export
-- `templates/index.html` — landing
-- `templates/mission.html` — simulator shell
-- `templates/components/order.html` — fleet + map form
-- `static/css/style.css` — landing + mission styles
-- `static/js/` — main, order-flow, rocket-animation
-- `static/images/`, `static/media/` — CC0 / public-domain assets where catalogued
-- `scripts/` — tooling (layout scrape, models, etc.)
+## Stack
 
-For AI contributor guidance, file ownership, and the current landing-page design
-baseline, see [AI_PROJECT_GUIDE.md](./AI_PROJECT_GUIDE.md).
+- Python / Flask / Jinja
+- Plain CSS and JavaScript (no npm build)
+- Three.js from CDN for the flight scene
+
+## Layout
+
+```
+app.py, freeze.py     Flask app and static export
+templates/            Landing + mission pages
+static/css, static/js Frontend
+static/images, media  Assets
+scripts/              Offline tooling (models, etc.)
+dist/                 Generated static export
+```
 
 ## Disclaimer
 
-This is a fictional parody project for educational and entertainment purposes only.
+SpaceY is a **parody**. It is not affiliated with any real aerospace company. Names, visuals, and flows are fictional or satirical. Do not treat any UI as a real order form.
